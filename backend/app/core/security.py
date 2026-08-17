@@ -1,22 +1,23 @@
 from __future__ import annotations
+from datetime import datetime, timedelta, timezone
 
-from datetime import datetime, timedelta
 from pathlib import Path
-import os
 from typing import Optional
 
 from dotenv import load_dotenv
 
 import jwt
-from jwt import ExpiredSignatureError, InvalidTokenError
+import os
+import secrets
+import hashlib
 
+from jwt import ExpiredSignatureError, InvalidTokenError
 from fastapi import Depends, HTTPException, Request, status
 
 
 # Load project .env (keeps behavior consistent with other core modules)
 BASE_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(BASE_DIR / ".env")
-
 
 # Configuration: secret and TTL (minutes)
 JWT_SECRET_KEY = os.getenv("ACCESS_TOKEN_SIG")
@@ -25,17 +26,30 @@ if not JWT_SECRET_KEY:
 
 _ttl_env = os.getenv("ACCESS_TOKEN_TTL")
 try:
-    ACCESS_TOKEN_TTL: int = int(_ttl_env) if _ttl_env and _ttl_env.strip() else 15
+    ACCESS_TOKEN_TTL_MIN: int = int(_ttl_env) if _ttl_env and _ttl_env.strip() else 10
 except ValueError:
-    ACCESS_TOKEN_TTL = 15
-
+    ACCESS_TOKEN_TTL_MIN = 10
 
 # Cookie name used to store access token (HTTP-only cookie expected)
 ACCESS_TOKEN_COOKIE_NAME = "access_token"
 
 
+
+
+# --- Refresh token config ---
+REFRESH_TOKEN_COOKIE_NAME = "refresh_token"
+
+_refresh_ttl_env = os.getenv("REFRESH_TOKEN_TTL_DAYS")
+try:
+    REFRESH_TOKEN_TTL_DAYS: int = int(_refresh_ttl_env) if _refresh_ttl_env and _refresh_ttl_env.strip() else 7
+except ValueError:
+    REFRESH_TOKEN_TTL_DAYS = 7
+
+
+
+
 def _now() -> datetime:
-    return datetime.utcnow()
+    return datetime.now(timezone.utc)
 
 
 def create_access_token(subject: str, expires_delta: Optional[timedelta] = None) -> str:
@@ -45,7 +59,7 @@ def create_access_token(subject: str, expires_delta: Optional[timedelta] = None)
     ``ACCESS_TOKEN_SIG`` environment variable as the secret.
     """
     if expires_delta is None:
-        expires_delta = timedelta(minutes=ACCESS_TOKEN_TTL)
+        expires_delta = timedelta(minutes=ACCESS_TOKEN_TTL_MIN)
 
     now = _now()
     exp = now + expires_delta
@@ -95,6 +109,44 @@ def verify_access_token(token: str) -> dict:
     return payload
 
 
+
+
+def generate_refresh_token() -> str:
+    """Generate a high-entropy opaque refresh token (not a JWT)."""
+    return secrets.token_urlsafe(32)  # 256 bits of randomness
+
+
+def hash_refresh_token(token: str) -> str:
+    """One-way hash of a refresh token for DB storage."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+# The secure attribute is omitted here because the backend is expected to be served over HTTPS in production.
+def set_access_token_cookie(response, token: str) -> None:
+    response.set_cookie(
+        key=ACCESS_TOKEN_COOKIE_NAME,
+        value=token,
+        httponly=True,
+        samesite="lax",
+        max_age=ACCESS_TOKEN_TTL_MIN * 60,
+    )
+
+
+def set_refresh_token_cookie(response, token: str) -> None:
+    response.set_cookie(
+        key=REFRESH_TOKEN_COOKIE_NAME,
+        value=token,
+        httponly=True,
+        samesite="lax",
+        max_age=REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60,
+    )
+
+
+def clear_auth_cookies(response) -> None:
+    response.delete_cookie(ACCESS_TOKEN_COOKIE_NAME)
+    response.delete_cookie(REFRESH_TOKEN_COOKIE_NAME)
+
+
 def get_current_user_id(request: Request) -> str:
     """FastAPI dependency that extracts the access token from an HTTP-only cookie,
     verifies it, and returns the authenticated user's id (the token `sub`).
@@ -113,9 +165,3 @@ def get_current_user_id(request: Request) -> str:
     return str(payload.get("sub"))
 
 
-def get_current_user_id_dep() -> Depends:
-    """Helper to return a dependency for route definitions.
-
-    Example: ``Depends(get_current_user_id_dep())``
-    """
-    return Depends(get_current_user_id)
