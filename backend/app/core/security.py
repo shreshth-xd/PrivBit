@@ -13,7 +13,7 @@ import hashlib
 
 from jwt import ExpiredSignatureError, InvalidTokenError
 from fastapi import Depends, HTTPException, Request, status
-
+from passlib.context import CryptContext
 
 # Load project .env (keeps behavior consistent with other core modules)
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -44,6 +44,18 @@ try:
     REFRESH_TOKEN_TTL_DAYS: int = int(_refresh_ttl_env) if _refresh_ttl_env and _refresh_ttl_env.strip() else 7
 except ValueError:
     REFRESH_TOKEN_TTL_DAYS = 7
+
+
+
+
+
+_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def hash_password(password: str) -> str:
+    return _pwd_context.hash(password)
+
+def verify_password(plain_password: str, password_hash: str) -> bool:
+    return _pwd_context.verify(plain_password, password_hash)
 
 
 
