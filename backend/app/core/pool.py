@@ -1,11 +1,11 @@
 from dotenv import load_dotenv
+from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(BASE_DIR / ".env")
 
 import os
 from collections.abc import Generator
 
-from fastapi import Depends, Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
