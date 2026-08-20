@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session as DBSession
 from app.core.pool import get_db
 from app.services import session_service
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter()
 
 @router.get("/me")
 def read_current_user(user_id: str = Depends(security.get_current_user_id)) -> dict:
