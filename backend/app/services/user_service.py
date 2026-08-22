@@ -1,7 +1,11 @@
 from sqlalchemy.orm import Session as DBSession
-
 from app.models.user import User
 from app.core import security
+from uuid import UUID
+
+
+def get_user_by_id(db: DBSession, user_id: UUID) -> User | None:
+    return db.query(User).filter(User.id == user_id).first()
 
 
 def get_user_by_email(db: DBSession, email: str) -> User | None:
