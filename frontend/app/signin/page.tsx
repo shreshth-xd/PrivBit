@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ChangeEvent } from 'react';
+import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Shield,
   Eye,
@@ -8,12 +9,18 @@ import {
   ArrowRight,
   Fingerprint,
 } from 'lucide-react';
+import { useAuth, ApiError } from '@/lib/auth-context';
 
 const LoginDesktop = () => {
+  const router = useRouter();
+  const { login } = useAuth();
+
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [localEncryption, setLocalEncryption] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState<boolean>(false);
 
   const handleEmailChange = (event: ChangeEvent<HTMLInputElement>) => {
     setEmail(event.target.value);
@@ -29,6 +36,25 @@ const LoginDesktop = () => {
 
   const toggleLocalEncryption = () => {
     setLocalEncryption((currentValue) => !currentValue);
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+    setSubmitting(true);
+
+    try {
+      await login({ email, password });
+      router.push('/');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.detail);
+      } else {
+        setError('Something went wrong. Please try again.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -52,7 +78,7 @@ const LoginDesktop = () => {
         </div>
 
         {/* Login Form */}
-        <div className="w-full space-y-6">
+        <form onSubmit={handleSubmit} className="w-full space-y-6">
           {/* Email Field */}
           <div className="space-y-2">
             <label className="text-[10px] font-bold uppercase tracking-widest text-[#1e293b] px-1">
@@ -64,6 +90,7 @@ const LoginDesktop = () => {
                 placeholder="name@example.com"
                 value={email}
                 onChange={handleEmailChange}
+                required
                 className="w-full px-6 py-4 bg-[#f2f4f6] border border-transparent rounded-2xl outline-none focus:ring-2 focus:ring-[#0D9488]/10 focus:border-[#0D9488]/30 transition-all placeholder:text-[#94a3b8]"
               />
             </div>
@@ -75,7 +102,7 @@ const LoginDesktop = () => {
               <label className="text-[10px] font-bold uppercase tracking-widest text-[#1e293b]">
                 Password
               </label>
-              <button className="text-[10px] font-bold text-[#0D9488] hover:underline uppercase tracking-wider">
+              <button type="button" className="text-[10px] font-bold text-[#0D9488] hover:underline uppercase tracking-wider">
                 Forgot Password?
               </button>
             </div>
@@ -85,6 +112,7 @@ const LoginDesktop = () => {
                 placeholder="••••••••"
                 value={password}
                 onChange={handlePasswordChange}
+                required
                 className="w-full px-6 py-4 bg-[#f2f4f6] border border-transparent rounded-2xl outline-none focus:ring-2 focus:ring-[#0D9488]/10 focus:border-[#0D9488]/30 transition-all placeholder:text-[#94a3b8]"
               />
               <button
@@ -97,6 +125,13 @@ const LoginDesktop = () => {
               </button>
             </div>
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <p className="text-sm text-red-600 px-1" role="alert">
+              {error}
+            </p>
+          )}
 
           {/* Local Encryption Toggle */}
           <div className="flex items-center justify-between py-2 border-t border-[#f1f5f9] mt-2">
@@ -124,19 +159,20 @@ const LoginDesktop = () => {
 
           {/* Sign In Button */}
           <button
-            type="button"
-            className="w-full flex items-center justify-center gap-2 px-6 py-5 bg-[#1e293b] text-white font-bold rounded-2xl hover:bg-[#2d3a4f] transition-all shadow-lg shadow-[#1e293b]/10 group mt-4"
+            type="submit"
+            disabled={submitting}
+            className="w-full flex items-center justify-center gap-2 px-6 py-5 bg-[#1e293b] text-white font-bold rounded-2xl hover:bg-[#2d3a4f] transition-all shadow-lg shadow-[#1e293b]/10 group mt-4 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <span>SIGN IN</span>
+            <span>{submitting ? 'SIGNING IN...' : 'SIGN IN'}</span>
             <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
           </button>
-        </div>
+        </form>
 
         {/* Footer Links */}
         <div className="mt-12 pt-8 border-t border-[#f1f5f9] w-full text-center">
           <p className="text-sm text-[#64748b]">
             Don't have an account?{' '}
-            <button type="button" className="font-bold text-[#0D9488] hover:underline">
+            <button type="button" onClick={() => router.push('/signup')} className="font-bold text-[#0D9488] hover:underline">
               Create an Account
             </button>
           </p>
