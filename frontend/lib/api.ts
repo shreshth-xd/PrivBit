@@ -122,7 +122,8 @@ export async function login(payload: LoginPayload): Promise<UserResponse> {
   return parseOrThrow<UserResponse>(response);
 }
 
-export async function getCurrentUser(): Promise<{ user_id: string }> {
+export async function getCurrentUser(): Promise<UserResponse> {
   const response = await authedFetch("/auth/me");
-  return parseOrThrow<{ user_id: string }>(response);
+  return parseOrThrow<UserResponse>(response);
 }
+
