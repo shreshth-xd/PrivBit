@@ -1,3 +1,4 @@
+from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from app.core import security
 
@@ -5,17 +6,20 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.core.pool import get_db
 from app.services import session_service
+from app.services import user_service
+from app.schemas.auth import UserResponse
 
 router = APIRouter()
 
-@router.get("/me")
-def read_current_user(user_id: str = Depends(security.get_current_user_id)) -> dict:
-    """Protected helper route that returns the authenticated user's id.
-
-    This is a minimal, illustrative endpoint. Registration/login/refresh/logout
-    and DB operations are intentionally not implemented here.
-    """
-    return {"user_id": user_id}
+@router.get("/me", response_model=UserResponse)
+def read_current_user(
+    user_id: str = Depends(security.get_current_user_id),
+    db: DBSession = Depends(get_db),
+) -> UserResponse:
+    user = user_service.get_user_by_id(db, UUID(user_id))
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return UserResponse.model_validate(user)
 
 
 @router.post("/refresh")
