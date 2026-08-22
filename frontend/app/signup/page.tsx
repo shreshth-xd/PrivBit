@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ChangeEvent } from 'react';
+import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Shield,
   Mail,
@@ -10,12 +11,18 @@ import {
   ArrowRight,
   CheckCircle2,
 } from 'lucide-react';
+import { useAuth, ApiError } from '@/lib/auth-context';
 
 const SignupMobileRefined = () => {
+  const router = useRouter();
+  const { register } = useAuth();
+
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [isAccepted, setIsAccepted] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState<boolean>(false);
 
   const handleEmailChange = (event: ChangeEvent<HTMLInputElement>) => {
     setEmail(event.target.value);
@@ -31,6 +38,30 @@ const SignupMobileRefined = () => {
 
   const toggleAcceptance = () => {
     setIsAccepted((currentValue) => !currentValue);
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+
+    if (!isAccepted) {
+      setError('Please acknowledge the encryption notice to continue.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await register({ email, password });
+      router.push('/');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.detail);
+      } else {
+        setError('Something went wrong. Please try again.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -55,7 +86,7 @@ const SignupMobileRefined = () => {
         </div>
 
         {/* Auth Card */}
-        <div className="bg-white rounded-[32px] border border-[#d8dadc] shadow-sm p-8 space-y-6">
+        <form onSubmit={handleSubmit} className="bg-white rounded-[32px] border border-[#d8dadc] shadow-sm p-8 space-y-6">
           {/* Email Field */}
           <div className="space-y-2">
             <label className="text-[10px] font-bold uppercase tracking-widest text-[#64748b] px-1">
@@ -70,6 +101,7 @@ const SignupMobileRefined = () => {
                 placeholder="hello@example.com"
                 value={email}
                 onChange={handleEmailChange}
+                required
                 className="w-full pl-12 pr-6 py-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-2xl outline-none focus:ring-2 focus:ring-[#0D9488]/10 focus:border-[#0D9488]/30 transition-all placeholder:text-[#94a3b8] text-sm"
               />
             </div>
@@ -89,6 +121,8 @@ const SignupMobileRefined = () => {
                 placeholder="••••••••"
                 value={password}
                 onChange={handlePasswordChange}
+                required
+                minLength={8}
                 className="w-full pl-12 pr-12 py-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-2xl outline-none focus:ring-2 focus:ring-[#0D9488]/10 focus:border-[#0D9488]/30 transition-all placeholder:text-[#94a3b8] text-sm"
               />
               <button
@@ -125,29 +159,35 @@ const SignupMobileRefined = () => {
               I understand that PrivBit uses end-to-end encryption. If I lose my master password, my data cannot be recovered.
             </p>
           </div>
-        </div>
+
+          {/* Error Message */}
+          {error && (
+            <p className="text-sm text-red-600 px-1" role="alert">
+              {error}
+            </p>
+          )}
+
+          {/* Fixed Action Button (moved inside form so Enter/submit works) */}
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full flex items-center justify-center gap-2 px-6 py-5 bg-[#0D9488] text-white font-bold rounded-2xl hover:bg-[#0b7a70] transition-all shadow-lg shadow-[#0D9488]/20 group active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <span>{submitting ? 'Initializing...' : 'Initialize Vault'}</span>
+            <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+          </button>
+        </form>
 
         {/* Footer Link */}
         <div className="mt-8 text-center">
           <p className="text-sm text-[#64748b]">
             Already have a sanctuary?{' '}
-            <button type="button" className="font-bold text-[#0D9488] hover:underline transition-all">
+            <button type="button" onClick={() => router.push('/signin')} className="font-bold text-[#0D9488] hover:underline transition-all">
               Sign in
             </button>
           </p>
         </div>
       </main>
-
-      {/* Fixed Action Button */}
-      <footer className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#f7f9fb] via-[#f7f9fb] to-transparent pt-12">
-        <button
-          type="button"
-          className="w-full flex items-center justify-center gap-2 px-6 py-5 bg-[#0D9488] text-white font-bold rounded-2xl hover:bg-[#0b7a70] transition-all shadow-lg shadow-[#0D9488]/20 group active:scale-[0.98]"
-        >
-          <span>Initialize Vault</span>
-          <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-        </button>
-      </footer>
     </div>
   );
 };
