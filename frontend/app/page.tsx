@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, type KeyboardEvent } from 'react';
+import { useState, useEffect, type KeyboardEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   PlusCircle, 
   BookOpen, 
@@ -12,13 +13,32 @@ import {
   Mic, 
   Check, 
   X,
-  Menu
+  Menu,
+  LogOut
 } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
 
 const QuickCaptureDesktop = () => {
+  const router = useRouter();
+  const { user, loading, logout } = useAuth();
+
   const [noteText, setNoteText] = useState('');
   const [tags, setTags] = useState<string[]>(['research']);
   const [newTag, setNewTag] = useState('');
+  
+  const handleLogout = async () => {
+    await logout();
+    router.push('/signin');
+  };
+
+  // Route guard: once the initial /me check resolves, if there's no
+  // authenticated user, kick them to signin. Runs after `loading`
+  // flips to false so we don't redirect prematurely mid-check.
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/signin');
+    }
+  }, [loading, user, router]);
 
   const removeTag = (tagToRemove: string) => {
     setTags((currentTags) => currentTags.filter((tag) => tag !== tagToRemove));
@@ -42,6 +62,17 @@ const QuickCaptureDesktop = () => {
     });
     setNewTag('');
   };
+
+  // While the /me check is in flight, or if we're mid-redirect for an
+  // unauthenticated visitor, render nothing rather than flashing the
+  // real page content.
+  if (loading || !user) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#f7f9fb]">
+        <p className="text-sm text-[#64748b]">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-[#f7f9fb] text-[#1e293b] font-sans">
@@ -86,12 +117,19 @@ const QuickCaptureDesktop = () => {
             <span>Support</span>
           </a>
           <div className="mt-8 flex items-center gap-3 px-4 py-3">
-            <div className="w-8 h-8 rounded-full bg-[#1e293b]/10 overflow-hidden">
-               <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop" alt="Profile" className="w-full h-full object-cover" />
+            <div className="w-8 h-8 rounded-full bg-[#1e293b]/10 flex items-center justify-center text-xs font-bold text-[#1e293b] uppercase">
+              {user.email.charAt(0)}
             </div>
             <div className="flex-1 overflow-hidden text-ellipsis">
-              <p className="text-sm font-medium">Alex Chen</p>
+              <p className="text-sm font-medium truncate">{user.email}</p>
             </div>
+            <button
+              onClick={handleLogout}
+              className="text-[#64748b] hover:text-[#ef4444] transition-colors"
+              aria-label="Log out"
+            >
+              <LogOut size={16} />
+            </button>
           </div>
         </div>
       </aside>
