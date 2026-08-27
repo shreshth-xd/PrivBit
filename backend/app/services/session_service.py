@@ -84,3 +84,43 @@ def rotate_session(db: DBSession, raw_refresh_token: str) -> tuple[str, UUID]:
     new_raw_token, _ = create_session(db, user_id)
 
     return new_raw_token, user_id
+
+
+
+def revoke_session_by_raw_token(db: DBSession, raw_refresh_token: str) -> None:
+    """Used by logout: find the session row matching this refresh token
+    and revoke it. Silently no-ops if the token doesn't match anything —
+    logout should never fail just because the cookie was already stale."""
+    token_hash = security.hash_refresh_token(raw_refresh_token)
+    session_row = (
+        db.query(SessionModel)
+        .filter(SessionModel.refresh_token_hash == token_hash)
+        .first()
+    )
+    if session_row is not None and session_row.revoked_at is None:
+        revoke_session(db, session_row)
+
+
+
+# Will require a cron job in production
+def purge_expired_sessions(db: DBSession) -> int:
+    """Delete session rows whose natural expiry has passed — regardless of
+    whether they were revoked. Safe because reuse-detection only needs a
+    revoked row to exist up until its own expires_at; once expired, an
+    attacker replaying it would be rejected by the expiry check anyway,
+    so the row has no further security value. Needs to be run using a cron
+    setup in production, otherwise it won't magically delete expired rows on its own."""
+    now = datetime.now(timezone.utc)
+    deleted = (
+        db.query(SessionModel)
+        .filter(SessionModel.expires_at < now)
+        .delete()
+    )
+    db.commit()
+    return deleted
+
+
+
+
+
+    
