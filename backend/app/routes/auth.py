@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session as DBSession
 from app.core.pool import get_db
 from app.services import session_service
 from app.services import user_service
-from app.schemas.auth import UserResponse
+from app.schemas.auth import UserResponse, RegisterRequest, LoginRequest
+from app.controllers import auth_controller
 
 router = APIRouter()
 
@@ -20,6 +21,21 @@ def read_current_user(
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return UserResponse.model_validate(user)
+
+
+@router.post("/register", status_code=201)
+def register(payload: RegisterRequest, response: Response, db: DBSession = Depends(get_db)) -> dict:
+    return auth_controller.register_controller(payload, response, db)
+
+
+@router.post("/login")
+def login(payload: LoginRequest, response: Response, db: DBSession = Depends(get_db)) -> dict:
+    return auth_controller.login_controller(payload, response, db)
+
+
+@router.post("/logout")
+def logout(request: Request, response: Response, db: DBSession = Depends(get_db)) -> dict:
+    return auth_controller.logout_controller(request, response, db)
 
 
 @router.post("/refresh")
