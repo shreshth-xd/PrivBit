@@ -122,6 +122,12 @@ export async function login(payload: LoginPayload): Promise<UserResponse> {
   return parseOrThrow<UserResponse>(response);
 }
 
+
+export async function logout(): Promise<void> {
+  await apiFetch("/auth/logout", { method: "POST" });
+}
+
+
 export async function getCurrentUser(): Promise<UserResponse> {
   const response = await authedFetch("/auth/me");
   return parseOrThrow<UserResponse>(response);
