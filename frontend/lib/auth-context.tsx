@@ -13,16 +13,19 @@ import {
   login as apiLogin,
   register as apiRegister,
   ApiError,
+  logout as apiLogout,
   type UserResponse,
   type LoginPayload,
   type RegisterPayload,
 } from "./api";
+
 
 interface AuthContextValue {
   user: UserResponse | null;
   loading: boolean;
   login: (payload: LoginPayload) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -51,8 +54,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(registeredUser);
   }
 
+  async function logout() {
+    try {
+      await apiLogout();
+    } finally {
+      setUser(null); // clear local state regardless of network outcome
+    }
+  } 
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
