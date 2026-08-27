@@ -1,4 +1,4 @@
-from fastapi import HTTPException, Response, status
+from fastapi import HTTPException, Request, Response, status
 from sqlalchemy.orm import Session as DBSession
 
 from app.core import security
@@ -39,3 +39,13 @@ def login_controller(payload: LoginRequest, response: Response, db: DBSession) -
     _issue_tokens_and_set_cookies(db, response, user.id)
 
     return {"id": str(user.id), "email": user.email}
+
+
+
+def logout_controller(request: Request, response: Response, db: DBSession) -> dict:
+    raw_refresh_token = request.cookies.get(security.REFRESH_TOKEN_COOKIE_NAME)
+    if raw_refresh_token:
+        session_service.revoke_session_by_raw_token(db, raw_refresh_token)
+
+    security.clear_auth_cookies(response)
+    return {"detail": "Logged out"}
