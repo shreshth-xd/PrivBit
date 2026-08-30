@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, type KeyboardEvent } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { 
   PlusCircle, 
   BookOpen, 
@@ -12,7 +13,6 @@ import {
   Paperclip, 
   Mic, 
   Check, 
-  X,
   Menu,
   LogOut
 } from 'lucide-react';
@@ -23,8 +23,8 @@ const QuickCaptureDesktop = () => {
   const { user, loading, logout } = useAuth();
 
   const [noteText, setNoteText] = useState('');
-  const [tags, setTags] = useState<string[]>(['research']);
-  const [newTag, setNewTag] = useState('');
+  interface Capture { id: string; title: string; date?: string }
+  const [recentCaptures, setRecentCaptures] = useState<Capture[]>([]);
   
   const handleLogout = async () => {
     await logout();
@@ -40,28 +40,7 @@ const QuickCaptureDesktop = () => {
     }
   }, [loading, user, router]);
 
-  const removeTag = (tagToRemove: string) => {
-    setTags((currentTags) => currentTags.filter((tag) => tag !== tagToRemove));
-  };
-
-  const addTag = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key !== 'Enter') {
-      return;
-    }
-
-    const normalizedTag = newTag.trim();
-    if (!normalizedTag) {
-      return;
-    }
-
-    setTags((currentTags) => {
-      if (currentTags.includes(normalizedTag)) {
-        return currentTags;
-      }
-      return [...currentTags, normalizedTag];
-    });
-    setNewTag('');
-  };
+  
 
   // While the /me check is in flight, or if we're mid-redirect for an
   // unauthenticated visitor, render nothing rather than flashing the
@@ -93,18 +72,18 @@ const QuickCaptureDesktop = () => {
             <PlusCircle size={20} />
             <span>Quick Capture</span>
           </a>
-          <a href="#" className="flex items-center gap-3 px-4 py-3 text-[#64748b] hover:bg-white/50 rounded-lg transition-colors">
+          <Link href="/library" className="flex items-center gap-3 px-4 py-3 text-[#64748b] hover:bg-white/50 rounded-lg transition-colors">
             <BookOpen size={20} />
             <span>Library</span>
-          </a>
-          <a href="#" className="flex items-center gap-3 px-4 py-3 text-[#64748b] hover:bg-white/50 rounded-lg transition-colors">
+          </Link>
+          <Link href="/search" className="flex items-center gap-3 px-4 py-3 text-[#64748b] hover:bg-white/50 rounded-lg transition-colors">
             <Search size={20} />
             <span>Search</span>
-          </a>
-          <a href="#" className="flex items-center gap-3 px-4 py-3 text-[#64748b] hover:bg-white/50 rounded-lg transition-colors">
+          </Link>
+          <Link href="/settings" className="flex items-center gap-3 px-4 py-3 text-[#64748b] hover:bg-white/50 rounded-lg transition-colors">
             <Settings size={20} />
             <span>Settings</span>
-          </a>
+          </Link>
         </nav>
 
         <div className="pt-6 border-t border-[#d8dadc] space-y-2">
@@ -149,24 +128,7 @@ const QuickCaptureDesktop = () => {
             onChange={(e) => setNoteText(e.target.value)}
           />
           
-          <div className="mt-6 flex flex-wrap gap-2 items-center min-h-10">
-            {tags.map(tag => (
-              <span key={tag} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#f2f4f6] rounded-lg text-sm text-[#475569]">
-                #{tag}
-                <button onClick={() => removeTag(tag)} className="hover:text-[#ef4444] transition-colors">
-                  <X size={14} />
-                </button>
-              </span>
-            ))}
-            <input 
-              type="text" 
-              placeholder="Add tag..." 
-              className="bg-transparent border-none outline-none text-sm text-[#475569] placeholder:text-[#94a3b8] w-24"
-              value={newTag}
-              onChange={(e) => setNewTag(e.target.value)}
-              onKeyDown={addTag}
-            />
-          </div>
+          
         </div>
 
         <div className="w-full max-w-3xl mt-8 flex justify-between items-center">
@@ -193,18 +155,20 @@ const QuickCaptureDesktop = () => {
         {/* Recent Captures (Small Footer Section) */}
         <div className="w-full max-w-3xl mt-24">
           <p className="text-[10px] uppercase tracking-widest text-[#94a3b8] mb-6 text-center">Recent Captures</p>
-          <div className="grid grid-cols-3 gap-6">
-            {[
-              { title: "The philosophy of digital minimalism in...", date: "2 hours ago" },
-              { title: "Weekly grocery list for the mountain cabin...", date: "Yesterday" },
-              { title: "Project Phoenix architecture diagram...", date: "Aug 24" }
-            ].map((capture, idx) => (
-              <div key={idx} className="p-4 bg-white/40 border border-[#d8dadc]/50 rounded-xl hover:bg-white hover:shadow-sm transition-all cursor-pointer">
-                <p className="text-xs font-medium text-[#1e293b] line-clamp-2 mb-2">{capture.title}</p>
-                <p className="text-[10px] text-[#94a3b8]">{capture.date}</p>
-              </div>
-            ))}
-          </div>
+          {recentCaptures.length === 0 ? (
+            <div className="py-12 flex items-center justify-center">
+              <p className="text-sm text-[#94a3b8]">No recent captures found</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-6">
+              {recentCaptures.map((capture) => (
+                <div key={capture.id} className="p-4 bg-white/40 border border-[#d8dadc]/50 rounded-xl hover:bg-white hover:shadow-sm transition-all cursor-pointer">
+                  <p className="text-xs font-medium text-[#1e293b] line-clamp-2 mb-2">{capture.title}</p>
+                  <p className="text-[10px] text-[#94a3b8]">{capture.date}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>
