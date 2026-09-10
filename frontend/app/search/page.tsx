@@ -1,12 +1,13 @@
 "use client"
 import React, { useState } from 'react';
+import Link from 'next/link';
+import Sidebar from '@/components/Sidebar';
+import { useAuth } from '@/lib/auth-context';
 import { 
   PlusCircle, 
   BookOpen, 
   Search as SearchIcon, 
-  Settings, 
-  Shield, 
-  HelpCircle,
+  Shield,
   RefreshCw,
   Command,
   ArrowRight
@@ -44,54 +45,11 @@ const SearchDesktop: React.FC = () => {
     }
   ];
 
+  const { user } = useAuth();
+
   return (
     <div className="flex h-screen bg-[#f7f9fb] text-[#1e293b] font-sans">
-      {/* Sidebar Navigation */}
-      <aside className="w-64 bg-[#f2f4f6] border-r border-[#d8dadc] flex flex-col p-6 shrink-0">
-        <div className="mb-10 flex items-center gap-3">
-          <div className="w-8 h-8 bg-[#1e293b] rounded flex items-center justify-center">
-            <Shield size={18} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold leading-tight">PrivBit</h1>
-            <p className="text-[10px] uppercase tracking-wider text-[#64748b]">Encrypted Workspace</p>
-          </div>
-        </div>
-
-        <nav className="flex-1 space-y-2">
-          <a href="#" className="flex items-center gap-3 px-4 py-3 text-[#64748b] hover:bg-white hover:shadow-sm rounded-lg transition-all group">
-            <PlusCircle size={20} />
-            <span className="font-medium">Quick Capture</span>
-          </a>
-          <a href="#" className="flex items-center gap-3 px-4 py-3 text-[#64748b] hover:bg-white hover:shadow-sm rounded-lg transition-all group">
-            <BookOpen size={20} />
-            <span className="font-medium">Library</span>
-          </a>
-          <a href="#" className="flex items-center gap-3 px-4 py-3 bg-white shadow-sm rounded-lg text-[#1e293b] font-bold transition-all border border-[#d8dadc]/50">
-            <SearchIcon size={20} />
-            <span>Search</span>
-          </a>
-          <a href="#" className="flex items-center gap-3 px-4 py-3 text-[#64748b] hover:bg-white hover:shadow-sm rounded-lg transition-all group">
-            <Settings size={20} />
-            <span className="font-medium">Settings</span>
-          </a>
-        </nav>
-
-        <div className="pt-6 border-t border-[#d8dadc] space-y-2">
-          <a href="#" className="flex items-center gap-3 px-4 py-2 text-xs text-[#64748b] hover:text-[#1e293b] transition-colors">
-            <Shield size={16} />
-            <span>Security</span>
-          </a>
-          <a href="#" className="flex items-center gap-3 px-4 py-2 text-xs text-[#64748b] hover:text-[#1e293b] transition-colors">
-            <HelpCircle size={16} />
-            <span>Support</span>
-          </a>
-          <button className="w-full mt-6 flex items-center justify-center gap-2 px-4 py-3 bg-[#1e293b] text-white text-sm font-bold rounded-xl hover:bg-[#2d3a4f] transition-colors">
-            <PlusCircle size={18} />
-            New Note
-          </button>
-        </div>
-      </aside>
+      <Sidebar />
 
       {/* Main Search Interface */}
       <main className="flex-1 flex flex-col overflow-hidden">
@@ -105,8 +63,8 @@ const SearchDesktop: React.FC = () => {
             <button className="p-2 text-[#64748b] hover:text-[#1e293b] transition-colors">
               <Shield size={18} />
             </button>
-            <div className="w-8 h-8 rounded-full bg-[#1e293b]/10 overflow-hidden border border-[#d8dadc]">
-               <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop" alt="Profile" className="w-full h-full object-cover" />
+            <div className="w-8 h-8 rounded-full bg-[#1e293b]/10 flex items-center justify-center text-xs font-bold text-[#1e293b] uppercase">
+              {user?.email ? user.email.charAt(0) : 'U'}
             </div>
           </div>
         </header>

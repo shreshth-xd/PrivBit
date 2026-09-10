@@ -1,5 +1,8 @@
 "use client"
 import React, { useState } from 'react';
+import Link from 'next/link';
+import Sidebar from '@/components/Sidebar';
+import { useAuth } from '@/lib/auth-context';
 import { 
   Shield, 
   ChevronRight, 
@@ -65,6 +68,8 @@ const SettingsMobile: React.FC = () => {
   const [biometricLock, setBiometricLock] = useState(true);
   const [zeroKnowledgeSync, setZeroKnowledgeSync] = useState(false);
 
+  const { user } = useAuth();
+
   return (
     <div className="flex flex-col h-screen bg-[#f7f9fb] font-sans text-slate-900">
       {/* Top App Bar */}
@@ -72,12 +77,8 @@ const SettingsMobile: React.FC = () => {
         <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
         <div className="flex items-center gap-4">
           <Shield size={22} className="text-slate-700" />
-          <div className="w-8 h-8 rounded-full border border-slate-200 overflow-hidden">
-            <img 
-              src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop" 
-              alt="Profile" 
-              className="w-full h-full object-cover"
-            />
+          <div className="w-8 h-8 rounded-full border border-slate-200 bg-[#1e293b]/10 flex items-center justify-center text-xs font-bold text-[#1e293b] uppercase">
+            {user?.email ? user.email.charAt(0) : 'U'}
           </div>
         </div>
       </header>
@@ -167,23 +168,23 @@ const SettingsMobile: React.FC = () => {
 
       {/* Bottom Navigation Bar */}
       <nav className="fixed bottom-0 left-0 right-0 h-20 bg-white/90 backdrop-blur-lg border-t border-slate-100 flex items-center justify-around px-6 pb-safe z-30">
-        <button className="flex flex-col items-center gap-1 text-slate-400">
+        <Link href="/" className="flex flex-col items-center gap-1 text-slate-400">
           <Edit3 size={24} />
           <span className="text-[10px] font-bold">Capture</span>
-        </button>
-        <button className="flex flex-col items-center gap-1 text-slate-400">
+        </Link>
+        <Link href="/library" className="flex flex-col items-center gap-1 text-slate-400">
           <FolderOpen size={24} />
           <span className="text-[10px] font-bold">Library</span>
-        </button>
-        <button className="flex flex-col items-center gap-1 text-slate-400">
+        </Link>
+        <Link href="/search" className="flex flex-col items-center gap-1 text-slate-400">
           <Search size={24} />
           <span className="text-[10px] font-bold">Search</span>
-        </button>
-        <button className="flex flex-col items-center gap-1 text-[#0D9488] relative">
+        </Link>
+        <Link href="/settings" className="flex flex-col items-center gap-1 text-[#0D9488] relative">
           <div className="absolute -top-1 px-4 py-4 bg-[#99f6e4]/30 rounded-2xl -z-10" />
           <SettingsIcon size={24} />
           <span className="text-[10px] font-bold">Settings</span>
-        </button>
+        </Link>
       </nav>
     </div>
   );
