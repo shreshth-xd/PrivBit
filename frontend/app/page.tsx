@@ -4,18 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
-  PlusCircle, 
-  BookOpen, 
-  Search, 
-  Settings, 
-  Shield, 
-  HelpCircle, 
   Paperclip, 
   Mic, 
   Check, 
   Menu,
   LogOut
 } from 'lucide-react';
+import Sidebar from '@/components/Sidebar';
 import { useAuth } from '@/lib/auth-context';
 
 const QuickCaptureDesktop = () => {
@@ -55,63 +50,7 @@ const QuickCaptureDesktop = () => {
 
   return (
     <div className="flex h-screen bg-[#f7f9fb] text-[#1e293b] font-sans">
-      {/* Sidebar Navigation */}
-      <aside className="w-64 bg-[#f2f4f6] border-r border-[#d8dadc] flex flex-col p-6">
-        <div className="mb-10 flex items-center gap-3">
-          <div className="w-8 h-8 bg-[#1e293b] rounded flex items-center justify-center">
-            <Shield size={18} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold leading-tight">PrivBit</h1>
-            <p className="text-[10px] uppercase tracking-wider text-[#64748b]">Encrypted Workspace</p>
-          </div>
-        </div>
-
-        <nav className="flex-1 space-y-2">
-          <a href="#" className="flex items-center gap-3 px-4 py-3 bg-white shadow-sm rounded-lg text-[#1e293b] font-bold transition-all">
-            <PlusCircle size={20} />
-            <span>Quick Capture</span>
-          </a>
-          <Link href="/library" className="flex items-center gap-3 px-4 py-3 text-[#64748b] hover:bg-white/50 rounded-lg transition-colors">
-            <BookOpen size={20} />
-            <span>Library</span>
-          </Link>
-          <Link href="/search" className="flex items-center gap-3 px-4 py-3 text-[#64748b] hover:bg-white/50 rounded-lg transition-colors">
-            <Search size={20} />
-            <span>Search</span>
-          </Link>
-          <Link href="/settings" className="flex items-center gap-3 px-4 py-3 text-[#64748b] hover:bg-white/50 rounded-lg transition-colors">
-            <Settings size={20} />
-            <span>Settings</span>
-          </Link>
-        </nav>
-
-        <div className="pt-6 border-t border-[#d8dadc] space-y-2">
-          <a href="#" className="flex items-center gap-3 px-4 py-2 text-xs text-[#64748b] hover:text-[#1e293b] transition-colors">
-            <Shield size={16} />
-            <span>Security</span>
-          </a>
-          <a href="#" className="flex items-center gap-3 px-4 py-2 text-xs text-[#64748b] hover:text-[#1e293b] transition-colors">
-            <HelpCircle size={16} />
-            <span>Support</span>
-          </a>
-          <div className="mt-8 flex items-center gap-3 px-4 py-3">
-            <div className="w-8 h-8 rounded-full bg-[#1e293b]/10 flex items-center justify-center text-xs font-bold text-[#1e293b] uppercase">
-              {user.email.charAt(0)}
-            </div>
-            <div className="flex-1 overflow-hidden text-ellipsis">
-              <p className="text-sm font-medium truncate">{user.email}</p>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="text-[#64748b] hover:text-[#ef4444] transition-colors"
-              aria-label="Log out"
-            >
-              <LogOut size={16} />
-            </button>
-          </div>
-        </div>
-      </aside>
+      <Sidebar />
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-center p-12 max-w-5xl mx-auto">
