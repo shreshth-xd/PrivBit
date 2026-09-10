@@ -6,7 +6,7 @@ from qdrant_client.models import Distance, VectorParams, PayloadSchemaType
 from app.core.embedding import EMBEDDING_DIMENSIONS
 
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
-COLLECTION_NAME = "chunks"
+COLLECTION_NAME = "privbit"
 
 client = QdrantClient(url=QDRANT_URL)
 
