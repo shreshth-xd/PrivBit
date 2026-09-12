@@ -12,6 +12,8 @@ import {
   Command,
   ArrowRight
 } from 'lucide-react';
+import { search } from '@/lib/api';
+import { ApiError } from '@/lib/auth-context';
 
 interface SearchResult {
   id: string;
@@ -24,6 +26,10 @@ interface SearchResult {
 
 const SearchDesktop: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [answer, setAnswer] = useState<string | null>(null);
+  const [sourcesCount, setSourcesCount] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
   
   // Mock results based on the design
   const results: SearchResult[] = [
@@ -46,6 +52,27 @@ const SearchDesktop: React.FC = () => {
   ];
 
   const { user } = useAuth();
+
+  const handleSearch = async () => {
+    setError(null);
+    setAnswer(null);
+    setSourcesCount(null);
+    if (!searchQuery.trim()) return;
+    setLoading(true);
+    try {
+      const res = await search(searchQuery.trim());
+      setAnswer(res.answer);
+      setSourcesCount(res.sources_count);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.detail);
+      } else {
+        setError('Something went wrong. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="flex h-screen bg-[#f7f9fb] text-[#1e293b] font-sans">
@@ -81,12 +108,21 @@ const SearchDesktop: React.FC = () => {
               className="w-full pl-16 pr-24 py-6 bg-white border border-[#d8dadc] rounded-2xl shadow-sm text-xl outline-none focus:ring-4 focus:ring-[#0D9488]/5 focus:border-[#0D9488] transition-all placeholder:text-[#94a3b8]"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  void handleSearch();
+                }
+              }}
             />
             <div className="absolute inset-y-0 right-6 flex items-center">
-              <div className="flex items-center gap-1 px-2 py-1 bg-[#f2f4f6] border border-[#cbd5e1] rounded text-[11px] text-[#64748b] font-medium">
-                <Command size={10} />
-                <span>K</span>
-              </div>
+              <button
+                onClick={() => void handleSearch()}
+                disabled={loading || !searchQuery.trim()}
+                className="px-4 py-2 bg-[#0D9488] text-white rounded-2xl font-bold disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Searching...' : 'Search'}
+              </button>
             </div>
           </div>
 
@@ -102,50 +138,24 @@ const SearchDesktop: React.FC = () => {
               </p>
             </div>
           ) : (
-            /* Results State */
-            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="text-sm font-bold text-[#64748b] uppercase tracking-wider">Top Results</h3>
-                <span className="text-xs text-[#94a3b8]">{results.length} notes found</span>
-              </div>
-              
-              {results.map((result) => (
-                <div key={result.id} className="bg-white border border-[#d8dadc] rounded-2xl p-6 hover:shadow-md hover:border-[#0D9488]/30 transition-all cursor-pointer group">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-[#f7f9fb] flex items-center justify-center text-[#64748b]">
-                        <BookOpen size={16} />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-lg text-[#1e293b] group-hover:text-[#0D9488] transition-colors">{result.title}</h4>
-                        <p className="text-xs text-[#94a3b8]">{result.date}</p>
-                      </div>
-                    </div>
-                    {result.matchPercentage && (
-                      <span className="px-2 py-1 bg-[#f2f4f6] rounded text-[10px] font-bold text-[#64748b] uppercase tracking-tight">
-                        {result.matchPercentage}% Match
-                      </span>
-                    )}
-                  </div>
-                  
-                  <p className="text-[#475569] leading-relaxed mb-6">
-                    {result.excerpt}
-                  </p>
-                  
-                  <div className="flex justify-between items-center">
-                    <div className="flex gap-2">
-                      {result.tags.map(tag => (
-                        <span key={tag} className="px-2 py-1 bg-[#f2f4f6] rounded text-[10px] font-bold text-[#0D9488]">
-                          #{tag}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="text-[#94a3b8] group-hover:text-[#0D9488] group-hover:translate-x-1 transition-all">
-                      <ArrowRight size={18} />
-                    </div>
-                  </div>
+            <div>
+              {error && (
+                <p className="text-sm text-red-600 px-1" role="alert">{error}</p>
+              )}
+
+              {answer ? (
+                <div className="bg-white border border-[#d8dadc] rounded-2xl p-6 mt-6">
+                  <h3 className="text-sm font-bold text-[#64748b] uppercase tracking-wider mb-2">Answer</h3>
+                  <p className="text-[#475569] leading-relaxed mb-4">{answer}</p>
+                  {sourcesCount !== null && (
+                    <p className="text-xs text-[#94a3b8]">{sourcesCount} sources</p>
+                  )}
                 </div>
-              ))}
+              ) : (
+                <div className="py-12 flex items-center justify-center">
+                  <p className="text-sm text-[#94a3b8]">Type a query and press Enter or click Search to run semantic search.</p>
+                </div>
+              )}
             </div>
           )}
         </section>

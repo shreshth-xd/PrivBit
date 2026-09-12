@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import { useAuth } from '@/lib/auth-context';
+import { createCapture } from '@/lib/api';
+import { ApiError } from '@/lib/auth-context';
 
 const QuickCaptureDesktop = () => {
   const router = useRouter();
@@ -20,6 +22,9 @@ const QuickCaptureDesktop = () => {
   const [noteText, setNoteText] = useState('');
   interface Capture { id: string; title: string; date?: string }
   const [recentCaptures, setRecentCaptures] = useState<Capture[]>([]);
+  const [saving, setSaving] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   
   const handleLogout = async () => {
     await logout();
@@ -34,6 +39,38 @@ const QuickCaptureDesktop = () => {
       router.push('/signin');
     }
   }, [loading, user, router]);
+
+  // Keyboard shortcut: Cmd/Ctrl + Enter to save
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        handleSave();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [noteText]);
+
+  const handleSave = async () => {
+    setError(null);
+    if (!noteText.trim()) return;
+    setSaving(true);
+    try {
+      await createCapture(noteText.trim());
+      setNoteText('');
+      setSuccess('Saved');
+      setTimeout(() => setSuccess(null), 2000);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.detail);
+      } else {
+        setError('Something went wrong. Please try again.');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
 
   
 
@@ -84,10 +121,26 @@ const QuickCaptureDesktop = () => {
             <span className="text-xs text-[#94a3b8] flex items-center gap-1">
               <kbd className="px-1.5 py-0.5 border border-[#cbd5e1] rounded text-[10px]">⌘</kbd> + <kbd className="px-1.5 py-0.5 border border-[#cbd5e1] rounded text-[10px]">Enter</kbd> to save
             </span>
-            <button className="flex items-center gap-2 px-8 py-3.5 bg-[#0D9488] text-white font-bold rounded-2xl hover:bg-[#0b7a70] transition-colors shadow-lg shadow-[#0D9488]/20 group">
-              Save Note
-              <Check size={18} className="group-active:scale-110 transition-transform" />
-            </button>
+            <div className="flex flex-col items-end gap-2">
+              {error && (
+                <p className="text-sm text-red-600 px-1" role="alert">
+                  {error}
+                </p>
+              )}
+              {success && (
+                <p className="text-sm text-green-600 px-1" role="status">
+                  {success}
+                </p>
+              )}
+              <button
+                onClick={handleSave}
+                disabled={saving || !noteText.trim()}
+                className="flex items-center gap-2 px-8 py-3.5 bg-[#0D9488] text-white font-bold rounded-2xl hover:bg-[#0b7a70] transition-colors shadow-lg shadow-[#0D9488]/20 group disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <span>{saving ? 'SAVING...' : 'Save Note'}</span>
+                <Check size={18} className="group-active:scale-110 transition-transform" />
+              </button>
+            </div>
           </div>
         </div>
 

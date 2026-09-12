@@ -133,3 +133,33 @@ export async function getCurrentUser(): Promise<UserResponse> {
   return parseOrThrow<UserResponse>(response);
 }
 
+// --- New endpoints: captures and search ---
+
+export interface CaptureResponse {
+  id: string;
+  created_at: string;
+  chunks_created: number;
+  chunks_embedded: number;
+}
+
+export interface SearchResponse {
+  answer: string;
+  sources_count: number;
+}
+
+export async function createCapture(content: string): Promise<CaptureResponse> {
+  const response = await authedFetch("/captures/", {
+    method: "POST",
+    body: JSON.stringify({ content }),
+  });
+  return parseOrThrow<CaptureResponse>(response);
+}
+
+export async function search(query: string): Promise<SearchResponse> {
+  const response = await authedFetch("/search/", {
+    method: "POST",
+    body: JSON.stringify({ query }),
+  });
+  return parseOrThrow<SearchResponse>(response);
+}
+
