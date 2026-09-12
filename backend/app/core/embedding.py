@@ -9,7 +9,10 @@ if not _GEMINI_API_KEY:
 
 _client = genai.Client(api_key=_GEMINI_API_KEY)
 
-EMBEDDING_MODEL = "gemini-embedding-001"
+EMBEDDING_MODEL = os.getenv("GEMINI_EMBEDDING_MODEL")
+if not EMBEDDING_MODEL:
+    raise RuntimeError("GEMINI_EMBEDDING_MODEL environment variable is not set")
+
 EMBEDDING_DIMENSIONS = 768  # truncated via output_dimensionality — see note below
 
 
