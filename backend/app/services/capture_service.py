@@ -67,3 +67,12 @@ def create_capture(db: DBSession, user: User, content: str) -> tuple[Capture, in
         db.commit()
 
     return capture, len(chunk_datas), embedded_count
+
+
+def list_captures(db: DBSession, user: User) -> list[Capture]:
+    return (
+        db.query(Capture)
+        .filter(Capture.user_id == user.id)
+        .order_by(Capture.created_at.desc())
+        .all()
+    )

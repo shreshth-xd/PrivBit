@@ -10,3 +10,12 @@ class CaptureResponse(BaseModel):
     created_at: datetime
     chunks_created: int
     chunks_embedded: int
+
+
+class CaptureListItem(BaseModel):
+    id: UUID
+    title: str | None
+    created_at: datetime
+
+class CaptureListResponse(BaseModel):
+    captures: list[CaptureListItem]
