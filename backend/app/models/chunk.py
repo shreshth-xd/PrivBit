@@ -16,11 +16,13 @@ class Chunk(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4,
     )
 
-    capture_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("captures.id", ondelete="CASCADE"),
-        nullable=False,
+    capture_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("captures.id", ondelete="CASCADE"), nullable=True,
     )
+    message_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("messages.id", ondelete="CASCADE"), nullable=True,
+    )
+    source_type: Mapped[str] = mapped_column(String(20), nullable=False)
 
     # Denormalized from captures.user_id — avoids a join on every retrieval
     # query, and matches what Qdrant will need as point payload for
