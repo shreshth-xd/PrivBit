@@ -1,5 +1,5 @@
 "use client"
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import { useAuth } from '@/lib/auth-context';
@@ -13,9 +13,7 @@ import {
   FolderOpen,
   Search,
   Settings as SettingsIcon,
-  Fingerprint,
-  Timer,
-  RefreshCw
+  Timer
 } from 'lucide-react';
 
 interface SettingsItemProps {
@@ -65,9 +63,6 @@ const SettingsItem: React.FC<SettingsItemProps> = ({
 );
 
 const SettingsMobile: React.FC = () => {
-  const [biometricLock, setBiometricLock] = useState(true);
-  const [zeroKnowledgeSync, setZeroKnowledgeSync] = useState(false);
-
   const { user } = useAuth();
 
   return (
@@ -108,14 +103,6 @@ const SettingsMobile: React.FC = () => {
           <h3 className="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Security & Access</h3>
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <SettingsItem 
-              icon={<Fingerprint size={20} />} 
-              title="Biometric Lock" 
-              subtitle="Require FaceID to open PrivBit" 
-              action="toggle"
-              isToggled={biometricLock}
-              onToggle={() => setBiometricLock(!biometricLock)}
-            />
-            <SettingsItem 
               icon={<Timer size={20} />} 
               title="Self-Destruct Timer" 
               subtitle="Clear local cache after 48h" 
@@ -128,14 +115,6 @@ const SettingsMobile: React.FC = () => {
         <div className="mb-8">
           <h3 className="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Workspace</h3>
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            <SettingsItem 
-              icon={<RefreshCw size={20} />} 
-              title="Zero-Knowledge Sync" 
-              subtitle="Cloud sync without metadata leaks" 
-              action="toggle"
-              isToggled={zeroKnowledgeSync}
-              onToggle={() => setZeroKnowledgeSync(!zeroKnowledgeSync)}
-            />
             <SettingsItem 
               icon={<Smartphone size={20} />} 
               title="Connected Devices" 
