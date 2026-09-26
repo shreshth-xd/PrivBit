@@ -142,6 +142,16 @@ export interface CaptureResponse {
   chunks_embedded: number;
 }
 
+export interface CaptureListItem {
+  id: string;
+  title: string | null;
+  created_at: string;
+}
+
+export interface CaptureListResponse {
+  captures: CaptureListItem[];
+}
+
 export interface SearchResponse {
   answer: string;
   sources_count: number;
@@ -153,6 +163,11 @@ export async function createCapture(content: string): Promise<CaptureResponse> {
     body: JSON.stringify({ content }),
   });
   return parseOrThrow<CaptureResponse>(response);
+}
+
+export async function listCaptures(): Promise<CaptureListResponse> {
+  const response = await authedFetch("/captures/");
+  return parseOrThrow<CaptureListResponse>(response);
 }
 
 export async function search(query: string): Promise<SearchResponse> {
