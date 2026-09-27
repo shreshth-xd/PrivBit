@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session as DBSession
 
 from app.core import security
 from app.core.pool import get_db
-from app.schemas.capture import CaptureCreate, CaptureListResponse, CaptureResponse
+from app.schemas.capture import CaptureCreate, CaptureListItem, CaptureListResponse, CaptureResponse, CaptureTitleUpdate
 from app.schemas.message import MessageCreate, MessageResponse, MessageListResponse
 from app.controllers import message_controller
 from app.controllers import capture_controller
@@ -43,3 +43,20 @@ def list_messages(
     db: DBSession = Depends(get_db),
 ) -> MessageListResponse:
     return message_controller.list_messages_controller(capture_id, user_id, db)
+
+
+@router.patch("/{capture_id}", response_model=CaptureListItem)
+def update_capture_title(
+    capture_id: UUID, payload: CaptureTitleUpdate,
+    user_id: str = Depends(security.get_current_user_id), db: DBSession = Depends(get_db),
+) -> CaptureListItem:
+    return capture_controller.update_title_controller(capture_id, payload, user_id, db)
+
+
+@router.delete("/{capture_id}", status_code=204)
+def delete_capture(
+    capture_id: UUID,
+    user_id: str = Depends(security.get_current_user_id),
+    db: DBSession = Depends(get_db),
+) -> None:
+    capture_controller.delete_capture_controller(capture_id, user_id, db)
