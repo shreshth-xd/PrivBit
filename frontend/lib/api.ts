@@ -181,6 +181,23 @@ export async function listCaptures(): Promise<CaptureListResponse> {
   return parseOrThrow<CaptureListResponse>(response);
 }
 
+export async function updateCaptureTitle(captureId: string, title: string): Promise<CaptureListItem> {
+  const response = await authedFetch(`/captures/${encodeURIComponent(captureId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ title }),
+  });
+  return parseOrThrow<CaptureListItem>(response);
+}
+
+export async function deleteCapture(captureId: string): Promise<void> {
+  const response = await authedFetch(`/captures/${encodeURIComponent(captureId)}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    await parseOrThrow<void>(response);
+  }
+}
+
 export async function getMessages(captureId: string): Promise<MessageListResponse> {
   const response = await authedFetch(`/captures/${encodeURIComponent(captureId)}/messages`);
   return parseOrThrow<MessageListResponse>(response);
