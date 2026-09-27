@@ -152,6 +152,17 @@ export interface CaptureListResponse {
   captures: CaptureListItem[];
 }
 
+export interface MessageResponse {
+  id: string;
+  role: string;
+  content: string;
+  created_at: string;
+}
+
+export interface MessageListResponse {
+  messages: MessageResponse[];
+}
+
 export interface SearchResponse {
   answer: string;
   sources_count: number;
@@ -168,6 +179,19 @@ export async function createCapture(content: string): Promise<CaptureResponse> {
 export async function listCaptures(): Promise<CaptureListResponse> {
   const response = await authedFetch("/captures/");
   return parseOrThrow<CaptureListResponse>(response);
+}
+
+export async function getMessages(captureId: string): Promise<MessageListResponse> {
+  const response = await authedFetch(`/captures/${encodeURIComponent(captureId)}/messages`);
+  return parseOrThrow<MessageListResponse>(response);
+}
+
+export async function postMessage(captureId: string, content: string): Promise<MessageResponse> {
+  const response = await authedFetch(`/captures/${encodeURIComponent(captureId)}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ content }),
+  });
+  return parseOrThrow<MessageResponse>(response);
 }
 
 export async function search(query: string): Promise<SearchResponse> {
