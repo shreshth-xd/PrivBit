@@ -33,21 +33,13 @@ def _next_message_index(db: DBSession, capture_id: UUID) -> int:
 
 
 def _decrypt_thread_history(db: DBSession, dek: bytes, capture: Capture) -> list[dict]:
-    """Reconstructs the full conversation so far, for LLM context: the
-    original capture content as the first turn, followed by every message
-    in order."""
-    history = [{"role": "user", "content": encryption.decrypt_chunk(dek, capture.encrypted_content)}]
-
     messages = (
         db.query(Message)
         .filter(Message.capture_id == capture.id)
         .order_by(Message.message_index.asc())
         .all()
     )
-    for m in messages:
-        history.append({"role": m.role, "content": encryption.decrypt_chunk(dek, m.encrypted_content)})
-
-    return history
+    return [{"role": m.role, "content": encryption.decrypt_chunk(dek, m.encrypted_content)} for m in messages]
 
 
 def post_message(db: DBSession, user: User, capture_id: UUID, content: str) -> tuple[Message, Message]:
