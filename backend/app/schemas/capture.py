@@ -19,3 +19,6 @@ class CaptureListItem(BaseModel):
 
 class CaptureListResponse(BaseModel):
     captures: list[CaptureListItem]
+
+class CaptureTitleUpdate(BaseModel):
+    title: str
