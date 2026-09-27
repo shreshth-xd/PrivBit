@@ -20,3 +20,13 @@ Question: {query}"""
         contents=prompt,
     )
     return response.text
+
+def generate_reply(history: list[dict]) -> str:
+    contents = "\n\n".join(f"{turn['role'].upper()}: {turn['content']}" for turn in history)
+    prompt = f"""Continue this conversation naturally, staying grounded in what's actually been discussed.
+
+{contents}
+
+ASSISTANT:"""
+    response = _client.models.generate_content(model=ANSWER_MODEL, contents=prompt)
+    return response.text
