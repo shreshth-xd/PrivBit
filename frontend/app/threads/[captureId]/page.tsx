@@ -1,19 +1,53 @@
 'use client';
 
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, FocusEvent, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { ArrowUp } from 'lucide-react';
-import { ApiError, getMessages, postMessage, type MessageResponse } from '@/lib/api';
+import { ArrowUp, Pencil } from 'lucide-react';
+import { ApiError, getMessages, listCaptures, postMessage, updateCaptureTitle, type MessageResponse } from '@/lib/api';
 
 export default function ThreadPage() {
   const { captureId } = useParams<{ captureId: string }>();
   const [messages, setMessages] = useState<MessageResponse[]>([]);
   const [draft, setDraft] = useState('');
   const [loadedCaptureId, setLoadedCaptureId] = useState<string | null>(null);
+  const [captureTitle, setCaptureTitle] = useState<string | null>(null);
+  const [titleLoadedCaptureId, setTitleLoadedCaptureId] = useState<string | null>(null);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [savingTitle, setSavingTitle] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
+  const cancelTitleBlurRef = useRef(false);
   const loading = loadedCaptureId !== captureId;
+  const displayedTitle = titleLoadedCaptureId === captureId
+    ? captureTitle || 'Untitled capture'
+    : 'Conversation';
+
+  useEffect(() => {
+    let active = true;
+
+    const loadCaptureTitle = async () => {
+      try {
+        const response = await listCaptures();
+        if (active) {
+          const capture = response.captures.find((item) => item.id === captureId);
+          setCaptureTitle(capture?.title ?? null);
+          setTitleLoadedCaptureId(captureId);
+        }
+      } catch (err) {
+        if (active) {
+          setError(err instanceof ApiError ? err.detail : 'Unable to load this conversation.');
+          setTitleLoadedCaptureId(captureId);
+        }
+      }
+    };
+
+    void loadCaptureTitle();
+    return () => {
+      active = false;
+    };
+  }, [captureId]);
 
   useEffect(() => {
     let active = true;
@@ -43,6 +77,39 @@ export default function ThreadPage() {
   useEffect(() => {
     endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, sending]);
+
+  const saveCaptureTitle = async (value: string) => {
+    const nextTitle = value.trim();
+    const previousTitle = captureTitle || 'Untitled capture';
+    setEditingTitle(false);
+
+    if (!nextTitle) {
+      setTitleDraft(previousTitle);
+      return;
+    }
+    if (nextTitle === previousTitle) return;
+
+    setSavingTitle(true);
+    setError(null);
+    try {
+      const updatedCapture = await updateCaptureTitle(captureId, nextTitle);
+      setCaptureTitle(updatedCapture.title);
+      setTitleDraft(updatedCapture.title || 'Untitled capture');
+    } catch (err) {
+      setTitleDraft(previousTitle);
+      setError(err instanceof ApiError ? err.detail : 'Unable to update this title.');
+    } finally {
+      setSavingTitle(false);
+    }
+  };
+
+  const handleTitleBlur = (event: FocusEvent<HTMLInputElement>) => {
+    if (cancelTitleBlurRef.current) {
+      cancelTitleBlurRef.current = false;
+      return;
+    }
+    void saveCaptureTitle(event.currentTarget.value);
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -76,7 +143,43 @@ export default function ThreadPage() {
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col">
       <header className="flex h-16 shrink-0 items-center border-b border-[#d8dadc] bg-white/70 px-5 sm:px-8">
-        <h2 className="text-sm font-semibold text-[#1e293b]">Conversation</h2>
+        {editingTitle ? (
+          <input
+            autoFocus
+            type="text"
+            value={titleDraft}
+            onChange={(event) => setTitleDraft(event.target.value)}
+            onBlur={handleTitleBlur}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                event.currentTarget.blur();
+              } else if (event.key === 'Escape') {
+                event.preventDefault();
+                cancelTitleBlurRef.current = true;
+                event.currentTarget.blur();
+                setTitleDraft(displayedTitle);
+                setEditingTitle(false);
+              }
+            }}
+            aria-label="Conversation title"
+            className="h-9 w-full max-w-md rounded-md border border-[#d8dadc] bg-white px-3 text-sm font-semibold text-[#1e293b] outline-none focus:border-[#0D9488]"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setTitleDraft(displayedTitle);
+              setEditingTitle(true);
+            }}
+            disabled={titleLoadedCaptureId !== captureId || savingTitle}
+            aria-label={`Edit title: ${displayedTitle}`}
+            className="group flex min-w-0 items-center gap-2 text-sm font-semibold text-[#1e293b] disabled:cursor-default"
+          >
+            <span className="truncate">{displayedTitle}</span>
+            <Pencil size={14} className="shrink-0 text-[#94a3b8] transition-colors group-hover:text-[#0D9488]" />
+          </button>
+        )}
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8">
