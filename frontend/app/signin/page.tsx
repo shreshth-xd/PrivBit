@@ -7,7 +7,6 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  Fingerprint,
 } from 'lucide-react';
 import { useAuth, ApiError } from '@/lib/auth-context';
 
@@ -18,7 +17,6 @@ const LoginDesktop = () => {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
-  const [localEncryption, setLocalEncryption] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
 
@@ -32,10 +30,6 @@ const LoginDesktop = () => {
 
   const togglePasswordVisibility = () => {
     setShowPassword((currentValue) => !currentValue);
-  };
-
-  const toggleLocalEncryption = () => {
-    setLocalEncryption((currentValue) => !currentValue);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -132,30 +126,6 @@ const LoginDesktop = () => {
               {error}
             </p>
           )}
-
-          {/* Local Encryption Toggle */}
-          <div className="flex items-center justify-between py-2 border-t border-[#f1f5f9] mt-2">
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-[#1e293b]">Local Encryption Only</span>
-            </div>
-            <button
-              type="button"
-              onClick={toggleLocalEncryption}
-              className={`w-11 h-6 rounded-full transition-colors relative ${localEncryption ? 'bg-[#0D9488]' : 'bg-[#d8dadc]'}`}
-              aria-pressed={localEncryption}
-            >
-              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${localEncryption ? 'left-6' : 'left-1'}`} />
-            </button>
-          </div>
-
-          {/* Biometric Option */}
-          <button
-            type="button"
-            className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white border border-[#d8dadc] rounded-2xl text-sm font-medium text-[#1e293b] hover:bg-[#f8fafc] transition-all group"
-          >
-            <Fingerprint size={20} className="text-[#1e293b]" />
-            <span>Biometric Sign-in Available</span>
-          </button>
 
           {/* Sign In Button */}
           <button
