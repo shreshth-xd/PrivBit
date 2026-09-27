@@ -30,3 +30,11 @@ def generate_reply(history: list[dict]) -> str:
 ASSISTANT:"""
     response = _client.models.generate_content(model=ANSWER_MODEL, contents=prompt)
     return response.text
+
+
+def generate_title(content: str) -> str:
+    prompt = f"""Generate a short, descriptive title (max 6 words, no quotes, no punctuation at the end) for this note:
+
+{content[:500]}"""
+    response = _client.models.generate_content(model=ANSWER_MODEL, contents=prompt)
+    return response.text.strip()
