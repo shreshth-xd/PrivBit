@@ -151,9 +151,9 @@ const SettingsMobile: React.FC = () => {
           <Edit3 size={24} />
           <span className="text-[10px] font-bold">Capture</span>
         </Link>
-        <Link href="/library" className="flex flex-col items-center gap-1 text-slate-400">
+        <Link href="/threads" className="flex flex-col items-center gap-1 text-slate-400">
           <FolderOpen size={24} />
-          <span className="text-[10px] font-bold">Library</span>
+          <span className="text-[10px] font-bold">Threads</span>
         </Link>
         <Link href="/search" className="flex flex-col items-center gap-1 text-slate-400">
           <Search size={24} />
