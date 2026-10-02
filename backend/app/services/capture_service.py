@@ -13,8 +13,12 @@ from app.core import llm
 from app.models.message import Message
 from qdrant_client.models import PointIdsList
 
+from app.core.queue import job_queue
+from app.jobs.capture_jobs import process_new_capture
 
-def create_capture(db: DBSession, user: User, content: str) -> tuple[Capture, int, int]:
+
+
+def create_capture(db: DBSession, user: User, content: str) -> Capture:
     dek = encryption.decrypt_dek(user.encrypted_dek)
 
     capture = Capture(
@@ -25,47 +29,12 @@ def create_capture(db: DBSession, user: User, content: str) -> tuple[Capture, in
     db.commit()
     db.refresh(capture)
 
-    total_chunks, embedded_chunks = chunk_indexing_service.index_content(
-        db, dek, user.id, content, source_type="capture", capture_id=capture.id,
-    )
+    # Chunking, embedding, title generation, and the initial AI reply all
+    # happen in the background now — this function only does the one fast
+    # DB write above, then hands the rest off to a worker process via Redis.
+    job_queue.enqueue(process_new_capture, str(capture.id), str(user.id), content)
 
-    try:
-        title_text = llm.generate_title(content)
-        capture.encrypted_title = encryption.encrypt_chunk(dek, title_text)
-        db.add(capture)
-        db.commit()
-    except Exception:
-        pass
-
-    # Persist the initiating content as a real Message row (index 0), so the
-    # chat view can display it via GET /captures/{id}/messages like any
-    # other turn. embedding_status stays None — already indexed above via
-    # the capture path, not re-embedded here (would duplicate the same text).
-    initial_user_msg = Message(
-        capture_id=capture.id, user_id=user.id, role="user",
-        encrypted_content=encryption.encrypt_chunk(dek, content),
-        message_index=0, embedding_status=None,
-    )
-    db.add(initial_user_msg)
-    db.commit()
-
-    # Generate an immediate reply to the capture itself — matches
-    # ChatGPT/Claude Desktop: the first message you send gets answered,
-    # not just silently stored.
-    try:
-        reply_text = llm.generate_reply([{"role": "user", "content": content}])
-    except Exception:
-        reply_text = "Sorry, I couldn't generate a reply right now."
-
-    assistant_msg = Message(
-        capture_id=capture.id, user_id=user.id, role="assistant",
-        encrypted_content=encryption.encrypt_chunk(dek, reply_text),
-        message_index=1, embedding_status=None,
-    )
-    db.add(assistant_msg)
-    db.commit()
-
-    return capture, total_chunks, embedded_chunks
+    return capture
 
 
 def update_title(db: DBSession, user: User, capture_id, new_title: str) -> Capture:
