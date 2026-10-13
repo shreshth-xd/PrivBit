@@ -1,156 +1,84 @@
+Last updated: 2026-10-13 | Last verified against commit: 7a242d6 (+ uncommitted changes)
+
 # PrivBit project state
 
-This file reflects the code as it exists in the repo today, not a design aspirational snapshot. It is intentionally brief and factual.
+Present-state snapshot based on the application code and Alembic revisions.
 
-## 1. Product and runtime shape
+## 1. Product and runtime
 
-PrivBit is a privacy-first personal knowledge base: users capture notes, those notes are encrypted and semantically indexed, and they can ask questions grounded in their own content.
+PrivBit is a personal capture, thread, and semantic question-answering application.
+- Frontend: Next.js 16 App Router, React 19, TypeScript, Tailwind CSS.
+- Backend: FastAPI, Pydantic v2, SQLAlchemy 2.x, Alembic.
+- Services: PostgreSQL, Redis/RQ, Qdrant, Google Gemini APIs.
+- `backend/app/main.py` mounts `/health`, `/auth`, `/captures`, and `/search`. CORS allows `http://localhost:3000` with credentials; no production origin configuration is present there.
+- Run `backend/app/worker.py` separately for queued ingestion. The API bootstrap does not start the worker or call the Qdrant collection initializer.
 
-Current runtime stack from the code:
-- Frontend: Next.js App Router + React + TypeScript + Tailwind
-- Backend: FastAPI + SQLAlchemy 2.x + Alembic + Pydantic v2
-- Auth: JWT access tokens + HTTP-only cookies + hashed rotating refresh tokens
-- Data stores: PostgreSQL, Qdrant, Redis
-- AI: Google GenAI / Gemini embeddings and generation
+## 2. Configuration names
 
-Main app bootstrap is in `backend/app/main.py`: it mounts `/health`, `/auth`, `/search`, and `/captures` routers, and allows CORS from `http://localhost:3000` with credentials enabled.
+Backend code references `DATABASE_URL`, `REDIS_URL`, `ACCESS_TOKEN_SIG`, `ACCESS_TOKEN_TTL`, `REFRESH_TOKEN_TTL_DAYS`, `ENCRYPTION_KEK`, `GEMINI_API_KEY`, `GEMINI_EMBEDDING_MODEL`, `GEMINI_ANSWER_MODEL`, and `QDRANT_URL`. `QDRANT_URL` defaults to `http://localhost:6333`. The frontend requires `NEXT_PUBLIC_API_URL`. `ACCESS_TOKEN_TTL` is interpreted in minutes and defaults to 10; refresh-token lifetime defaults to 7 days. The backend and Alembic load `backend/.env`; the frontend reads `frontend/.env.local`.
 
-## 2. Config and environment variables
+## 3. Persistence and migrations
 
-The backend loads configuration from `backend/.env`; the frontend loads browser config from `frontend/.env.local`.
+SQLAlchemy models in `backend/app/models/`:
+- `users`: UUID, email, password hash, wrapped DEK, created/updated timestamps.
+- `sessions`: user FK, refresh-token hash, expiry, nullable revocation timestamp, created/updated timestamps.
+- `captures`: user FK, nullable encrypted title, encrypted original content, status (`processing` by default), timestamps.
+- `messages`: capture/user FKs, role, encrypted content, message index, nullable embedding status, timestamps.
+- `chunks`: nullable capture/message FKs, source type, user FK, chunk index, encrypted content, nullable token count, embedding status, timestamps.
 
-Environment names referenced by the code include:
-- `DATABASE_URL`
-- `REDIS_URL`
-- `ACCESS_TOKEN_SIG`
-- `ACCESS_TOKEN_TTL`
-- `REFRESH_TOKEN_TTL_DAYS`
-- `ENCRYPTION_KEK`
-- `GEMINI_API_KEY`
-- `GEMINI_EMBEDDING_MODEL`
-- `GEMINI_ANSWER_MODEL`
-- `QDRANT_URL`
-- `NEXT_PUBLIC_API_URL`
+Alembic chain: `4daa97e258e8` creates users/sessions; `49258da2fb49` adds nullable `encrypted_dek`; `7195f4e91604` makes it non-null; `6f469958de7d` creates captures/chunks; `c8d9355c1db0` adds messages and polymorphic chunk references; `4ed272eda6f6` adds capture status and drops `chunks_exactly_one_source`.
 
-The code also consults `ACCESS_TOKEN_TTL_MIN` in local config, but the runtime code path in `backend/app/core/security.py` reads `ACCESS_TOKEN_TTL` and falls back to a default value. This is a configuration drift point that is not currently normalized in the code.
+The model comment and `chunk_indexing_service.index_content` assert that exactly one of `capture_id`/`message_id` is supplied, but the current database migration no longer enforces that with a CHECK constraint.
 
-## 3. Persistence and schema
+## 4. Encryption and vectors
 
-The SQLAlchemy models in `backend/app/models/` define the core schema:
-- `users`: id, email, password_hash, encrypted_dek, created_at, updated_at
-- `sessions`: refresh token hash, expiry, revoke state, user linkage
-- `captures`: id, user_id, encrypted_title, encrypted_content, status, timestamps
-- `messages`: capture/thread message rows, encrypted_content, role, message_index, embedding_status
-- `chunks`: per-capture or per-message text chunks, encrypted_content, token_count, embedding_status, user_id, source_type
+`backend/app/core/encryption.py` uses AES-GCM with a 12-byte nonce prepended to each encrypted blob. Registration creates a random per-user 256-bit DEK, wraps it with the base64-decoded `ENCRYPTION_KEK`, and stores the wrapped key in `users.encrypted_dek`. Capture originals, titles, messages, and chunks are encrypted before PostgreSQL storage.
 
-`chunks` is intentionally polymorphic: `capture_id` or `message_id` is set, not both. The model comments and migration logic make that explicit.
+Plaintext is sent to Gemini for embeddings and generation. Qdrant stores vectors and payload IDs (`user_id`, `chunk_id`), not source text. `backend/app/core/vector_store.py` configures collection `privbit`, 768-dimensional cosine vectors, and a `user_id` payload index. Its `ensure_collection()` helper has no caller in the current code; provision the collection before ingestion/search or those operations can fail on a fresh Qdrant instance. Embeddings themselves are not encrypted.
 
-Schema lineage from Alembic:
-1. `4daa97e258e8` create users and sessions
-2. `49258da2fb49` add nullable `encrypted_dek` to users
-3. `7195f4e91604` make `encrypted_dek` non-null
-4. `6f469958de7d` add captures and chunks tables
-5. `c8d9355c1db0` add messages + polymorphic chunks
-6. `4ed272eda6f6` add `captures.status` and remove the old chunks check constraint
+## 5. Authentication
 
-## 4. Data protection model
+Routes in `backend/app/routes/auth.py` expose `POST /auth/register`, `/login`, `/logout`, `/refresh`, and `GET /auth/me`. Access tokens are HS256 JWTs in an HTTP-only `access_token` cookie; opaque refresh tokens are SHA-256 hashed in `sessions.refresh_token_hash`. Refresh rotates the session token; replay of a revoked token revokes all active sessions for that user. Cookies use `SameSite=Lax`; code does not set the `Secure` attribute. `purge_expired_sessions()` exists in `session_service.py` but is not scheduled or called. No CSRF protection is implemented.
 
-The app follows envelope encryption:
-- a project-wide KEK is loaded from `ENCRYPTION_KEK`
-- each user gets a random DEK generated at registration
-- the DEK is encrypted under the KEK and stored as `users.encrypted_dek`
-- capture content, titles, and message content are encrypted with the per-user DEK before being stored in Postgres
+The frontend `AuthProvider` restores identity through `/auth/me`; `AuthGuard` redirects unauthenticated private routes to `/signin`. `frontend/lib/api.ts` sends cookies on fetches and retries an authenticated request once after a 401 by refreshing first.
 
-The vector store is intentionally separate from the encrypted content store. `backend/app/core/vector_store.py` creates a Qdrant collection named `privbit` and adds a payload index on `user_id`. Qdrant points store only vector data plus payload like `user_id` and `chunk_id`; plaintext is never persisted there.
+## 6. Capture ingestion and events
 
-## 5. Authentication flow
+`POST /captures/` returns HTTP 201 with `{id, created_at, status: "processing"}`. `capture_service.create_capture` encrypts and commits the capture, then enqueues `process_new_capture(capture_id, user_id, content)` on the `privbit` RQ queue. Chunking, embedding, title generation, and initial thread creation happen in `backend/app/jobs/capture_jobs.py`.
 
-Auth is cookie-based and session-backed:
-- `POST /auth/register` creates a user, stores a session row, and sets both `access_token` and `refresh_token` cookies
-- `POST /auth/login` does the same for an existing user
-- `POST /auth/logout` revokes the current refresh token and clears cookies
-- `POST /auth/refresh` validates the current refresh token, rotates it, and issues a new access token
-- `GET /auth/me` returns the current user identity from the access-token cookie
+The worker indexes the capture content, attempts title generation (failure is ignored), creates the initial user message and assistant reply (reply failure gets a fallback), then marks the capture `ready` and publishes a Redis event. An outer processing failure marks it `failed` and publishes that status. If the worker cannot load the user or capture, it returns without updating/publishing a terminal status. If enqueueing fails after the capture commit, the request can fail while leaving a `processing` row.
 
-Implementation details:
-- access tokens are JWTs signed with HS256 using `ACCESS_TOKEN_SIG`
-- refresh tokens are opaque random values, hashed with SHA-256 before storage in `sessions.refresh_token_hash`
-- `session_service.rotate_session` implements replay detection: if a previously used refresh token is re-presented, all sessions for that user are revoked
+`GET /captures/{id}/events` requires the access cookie, returns 404 for a capture not owned by the user, subscribes to Redis before rechecking DB status, emits a terminal JSON status when available, sends `: keepalive` every 15 seconds, and ends after 180 seconds. `GET /captures/` returns titles and timestamps but not status. Capture list/create/rename/delete and message routes are in `backend/app/routes/captures.py`; deletion explicitly removes matching Qdrant points before PostgreSQL cascades.
 
-## 6. Capture lifecycle and ingestion
+## 7. Messages and retrieval
 
-The route layer is in `backend/app/routes/captures.py` and the controller/service split is in `backend/app/controllers/capture_controller.py` and `backend/app/services/capture_service.py`.
+Follow-up `POST /captures/{id}/messages` saves/indexes the user message, builds decrypted full-thread history, generates and saves an assistant reply, and returns the assistant message. `GET /captures/{id}/messages` returns the ordered decrypted thread. Assistant messages are not embedded. The initial capture is indexed as capture chunks; its initial user-message row is not separately indexed.
 
-Actual capture lifecycle:
-- `POST /captures/` creates a `Capture` row with encrypted content and returns a `processing` status immediately
-- `capture_service.create_capture` encrypts the note, persists the capture, then enqueues a Redis/RQ job: `process_new_capture(capture_id, user_id, content)`
-- worker processing happens in `backend/app/jobs/capture_jobs.py`
+`POST /search/` embeds a query using `RETRIEVAL_QUERY`, queries Qdrant for top 5 points filtered by `user_id`, loads/decrypts matching PostgreSQL chunks, and generates an answer from those chunks. Ingestion embeddings use `RETRIEVAL_DOCUMENT`. Responses contain `answer` and `sources_count`, not citations.
 
-The worker does the heavy ingestion work:
-1. load user + capture
-2. decrypt the user DEK
-3. call `chunk_indexing_service.index_content(...)`
-4. generate a title with the LLM
-5. create the initial user message row
-6. generate an assistant reply
-7. set `capture.status = "ready"` or `"failed"`
-8. publish a Redis event to `capture:{capture_id}:events`
+Chunking uses `tiktoken` (`cl100k_base`), NLTK sentence tokenization, a 500-token target, and 90-token sentence overlap. `chunk_indexing_service` writes each encrypted chunk as `pending`, then marks its embedding `completed` or `failed` after the Qdrant attempt. There is no automatic embedding retry worker.
 
-SSE endpoint: `GET /captures/{capture_id}/events` subscribes to the Redis channel and streams statuses to the frontend. If the capture is already `ready` or `failed`, it emits that state immediately; otherwise it waits for the worker publish and then exits.
+## 8. Frontend
 
-## 7. Message and thread behavior
+- `/`: Quick Capture and Recent Captures; successful creation clears the note, tracks the capture with credentialed EventSource, and displays processing status.
+- `/threads/[captureId]`: editable title, ordered messages, and composer; a tracked capture shows setup state and reloads messages when its event reaches `ready`/`failed`.
+- `CapturesProvider` is nested inside `AuthProvider`, fetches captures after auth resolves, and shares the list and in-memory processing IDs with the Sidebar and home page. On terminal SSE status it removes the ID and refreshes the list. EventSource closes on terminal status; transient CONNECTING errors are left to native reconnect behavior.
+- A full browser reload loses in-memory `processingIds`; list responses omit status, so the frontend does not resume event subscriptions for captures already processing.
+- `/search` calls the live search API but also contains unused mock result data. `/settings` contains static placeholder controls/copy. `/[project]` is static mock note content, not a data-backed project detail workflow. Sign-in/sign-up are separate routes.
 
-The message system is in `backend/app/services/message_service.py` and `backend/app/controllers/message_controller.py`.
+## 9. Current status
 
-Behavior today:
-- a user message is encrypted and saved with `message_index` ordering
-- only user-originated messages are embedded/indexed into Qdrant
-- assistant replies are not embedded; they remain in Postgres as encrypted content
-- the assistant reply is generated from full conversation history, using message content decrypted by the user DEK
-- each `Message` row stores `role`, `encrypted_content`, `message_index`, and optional `embedding_status`
+**Done in code:** cookie/session auth; encrypted PostgreSQL content; capture CRUD; Redis/RQ asynchronous ingestion; capture-status SSE; thread messaging; user-filtered semantic retrieval; shared frontend capture state.
 
-This makes the thread look like a sealed personal conversation backed by encrypted storage, while the retrieval layer sees only the user-owned semantic chunks.
+**In progress / temporary:** `/[project]` mock content (`frontend/app/[project]/page.tsx`); unused mock search results (`frontend/app/search/page.tsx`); static, nonfunctional settings claims and controls (`frontend/app/settings/page.tsx`). `backend/scripts/backfill_deks.py` is a one-off null-DEK backfill, although the current schema makes `encrypted_dek` non-null. `backend/app/jobs/capture_jobs.py` contains a worker `print` diagnostic when publishing ready; no TODO/FIXME markers were found in application source.
 
-## 8. Retrieval and search pipeline
+**Deferred / operational gaps:** embedding retry, expired-session cleanup scheduling, token-streamed AI output, CSRF protection, production CORS/cookie configuration, and resuming in-flight capture events after a browser reload. PostgreSQL, Redis with a running RQ worker, Qdrant, and Gemini access are required. `backend/tests/` is empty and the frontend package has no test script.
 
-The answer pipeline is in `backend/app/services/retrieval_service.py`.
+## 10. Key decisions and why
 
-Flow:
-1. generate a query embedding using `RETRIEVAL_QUERY`
-2. query Qdrant with a `user_id` payload filter
-3. collect matching `chunk_id`s
-4. load the matching chunk rows from Postgres
-5. decrypt those rows with the user DEK
-6. call the LLM with the decrypted context to answer the question
-
-`search_controller` exposes `POST /search/`, and `frontend/lib/api.ts` calls it through the authenticated fetch wrapper.
-
-## 9. Frontend behavior
-
-The UI is split across the App Router pages:
-- `frontend/app/page.tsx`: landing page and quick capture composer
-- `frontend/app/threads/[captureId]/page.tsx`: thread view and message composer
-- `frontend/components/Sidebar.tsx`: capture list, capture rename/delete, logout
-
-Authentication state is centralized in `frontend/lib/auth-context.tsx`: on mount it calls `/auth/me`, and if it fails it clears the user session instead of leaving stale auth state.
-
-The frontend API layer in `frontend/lib/api.ts` wraps every request with `credentials: "include"` and performs a single refresh retry on a `401` by calling `/auth/refresh` once before giving up.
-
-## 10. Current code-state observations
-
-- The app is functional as a local dev stack, but it depends on live PostgreSQL, Redis, and Qdrant services being available.
-- Background workers are part of the actual architecture. If the Redis/RQ worker is not running, new captures remain in the `processing` state and never finish ingestion.
-- The code has a real SSE mechanism for capture status updates, and the frontend uses it indirectly by polling or state transitions rather than by exposing explicit streaming UI for every capture.
-- There is a leftover debug print in `backend/app/jobs/capture_jobs.py` when a capture is published as ready.
-- The app stores all user payloads encrypted in Postgres, yet it still relies on Qdrant for retrieval relevance and is not a fully offline/local-only system; it uses Gemini APIs for both embeddings and generation.
-
-## 11. Working status
-
-As coded, the project is a working local-first personal RAG system with privacy-preserving storage and a queue-backed ingestion lifecycle. The most important implementation realities to remember are:
-- encrypted content lives in Postgres
-- vector data lives in Qdrant
-- auth is cookie-based with rotating refresh tokens
-- capture ingestion is asynchronous via Redis/RQ
-- retrieval is per-user and grounded in decrypted chunks fetched back from Postgres
-
-No secrets are included in this document; only the environment variable names are listed.
+- **Envelope encryption:** a server-held KEK wraps a random per-user DEK; content fields use AES-GCM and the DEK can be rewrapped independently of user content.
+- **Qdrant separate from PostgreSQL:** isolate vector representations from encrypted source content and use a dedicated vector engine. Residual risk: embeddings are derived from plaintext and are not encrypted.
+- **Sentence-aware overlapping chunks:** 500-token target with 90-token overlap preserves context across boundaries; tokenizer/detector are concretely `tiktoken` and NLTK.
+- **Track dual writes per chunk:** persist encrypted chunks with pending/completed/failed embedding state because PostgreSQL and Qdrant writes are not atomic; automated retries remain deferred.
+- **Index user-authored content only:** assistant replies are excluded to avoid retrieval feedback loops and unnecessary embedding volume.
+- **Asynchronous capture processing:** the prior synchronous-ingestion approach is superseded; Redis/RQ moves chunking, embedding, title generation, and the first reply off the create request so capture creation can return promptly, with SSE for completion state.
