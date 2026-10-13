@@ -1,6 +1,13 @@
+from pathlib import Path
+
+from dotenv import load_dotenv
+
 import os
 from redis import Redis
 from rq import Queue
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+load_dotenv(BASE_DIR / ".env")
 
 REDIS_URL = os.getenv("REDIS_URL")
 if not REDIS_URL:
