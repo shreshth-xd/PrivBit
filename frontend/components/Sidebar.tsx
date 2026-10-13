@@ -5,7 +5,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { type FocusEvent, useRef, useState } from 'react';
 import { ChevronDown, HelpCircle, LogOut, MoreVertical, PlusCircle, Search, Settings, Shield } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { ApiError, deleteCapture, listCaptures, updateCaptureTitle, type CaptureListItem } from '@/lib/api';
+import { ApiError, deleteCapture, updateCaptureTitle, type CaptureListItem } from '@/lib/api';
+import { useCaptures } from '@/lib/captures-context';
 
 const navItems = [
   { href: '/', label: 'Quick Capture', icon: PlusCircle },
@@ -17,10 +18,8 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { captures, loading: capturesLoading, error: capturesError, refresh, processingIds } = useCaptures();
   const [threadsExpanded, setThreadsExpanded] = useState(false);
-  const [captures, setCaptures] = useState<CaptureListItem[]>([]);
-  const [capturesLoading, setCapturesLoading] = useState(false);
-  const [capturesError, setCapturesError] = useState<string | null>(null);
   const [openCaptureMenuId, setOpenCaptureMenuId] = useState<string | null>(null);
   const [editingCaptureId, setEditingCaptureId] = useState<string | null>(null);
   const [titleDraft, setTitleDraft] = useState('');
@@ -30,18 +29,6 @@ export default function Sidebar() {
   const toggleThreads = () => {
     const shouldExpand = !threadsExpanded;
     setThreadsExpanded(shouldExpand);
-    if (!shouldExpand || capturesLoading) return;
-
-    setCapturesLoading(true);
-    setCapturesError(null);
-    void listCaptures()
-      .then((response) => {
-        setCaptures(response.captures);
-      })
-      .catch((err: unknown) => {
-        setCapturesError(err instanceof ApiError ? err.detail : 'Unable to load conversations.');
-      })
-      .finally(() => setCapturesLoading(false));
   };
 
   const beginRename = (capture: CaptureListItem) => {
@@ -67,10 +54,8 @@ export default function Sidebar() {
     }
 
     try {
-      const updatedCapture = await updateCaptureTitle(captureId, nextTitle);
-      setCaptures((current) => current.map((item) => (
-        item.id === captureId ? { ...item, title: updatedCapture.title } : item
-      )));
+      await updateCaptureTitle(captureId, nextTitle);
+      await refresh();
       setCaptureActionErrors((current) => {
         const next = { ...current };
         delete next[captureId];
@@ -105,7 +90,7 @@ export default function Sidebar() {
 
     try {
       await deleteCapture(capture.id);
-      setCaptures((current) => current.filter((item) => item.id !== capture.id));
+      await refresh();
       if (pathname === `/threads/${capture.id}`) router.push('/threads');
     } catch (err) {
       setCaptureActionErrors((current) => ({
@@ -222,7 +207,10 @@ export default function Sidebar() {
                             onClick={() => setOpenCaptureMenuId(null)}
                             className="min-w-0 flex-1 truncate py-2 pl-11 pr-2 text-sm"
                           >
-                            {capture.title || 'Untitled capture'}
+                            <span>{capture.title || 'Untitled capture'}</span>
+                            {processingIds.has(capture.id) && (
+                              <span className="ml-2 text-[10px] font-normal text-[#94a3b8]">Processing...</span>
+                            )}
                           </Link>
                         )}
                         <button
