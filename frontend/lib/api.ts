@@ -138,9 +138,10 @@ export async function getCurrentUser(): Promise<UserResponse> {
 export interface CaptureResponse {
   id: string;
   created_at: string;
-  chunks_created: number;
-  chunks_embedded: number;
+  status: string;
 }
+
+export type CaptureEventStatus = "ready" | "failed";
 
 export interface CaptureListItem {
   id: string;
@@ -179,6 +180,43 @@ export async function createCapture(content: string): Promise<CaptureResponse> {
 export async function listCaptures(): Promise<CaptureListResponse> {
   const response = await authedFetch("/captures/");
   return parseOrThrow<CaptureListResponse>(response);
+}
+
+export function subscribeToCaptureEvents(
+  captureId: string,
+  onStatus: (status: CaptureEventStatus) => void,
+): () => void {
+  const eventSource = new EventSource(
+    `${API_BASE_URL}/captures/${encodeURIComponent(captureId)}/events`,
+    { withCredentials: true },
+  );
+  let terminalStatusReceived = false;
+
+  eventSource.onmessage = (event) => {
+    try {
+      const { status } = JSON.parse(event.data) as { status: CaptureEventStatus };
+      onStatus(status);
+      if (status === "ready" || status === "failed") {
+        terminalStatusReceived = true;
+        eventSource.close();
+      }
+    } catch {
+      // Ignore malformed events and keep listening for a valid terminal status.
+    }
+  };
+
+  eventSource.onerror = () => {
+    if (eventSource.readyState === EventSource.CONNECTING) return;
+    if (eventSource.readyState === EventSource.CLOSED && !terminalStatusReceived) {
+      terminalStatusReceived = true;
+      onStatus("failed");
+    }
+  };
+
+  return () => {
+    terminalStatusReceived = true;
+    eventSource.close();
+  };
 }
 
 export async function updateCaptureTitle(captureId: string, title: string): Promise<CaptureListItem> {
