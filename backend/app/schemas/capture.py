@@ -8,9 +8,7 @@ class CaptureCreate(BaseModel):
 class CaptureResponse(BaseModel):
     id: UUID
     created_at: datetime
-    chunks_created: int
-    chunks_embedded: int
-
+    status: str  # "processing" — chunking/embedding/title/reply all happen in the background
 
 class CaptureListItem(BaseModel):
     id: UUID
