@@ -2,12 +2,11 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, LargeBinary, func
+from sqlalchemy import DateTime, ForeignKey, LargeBinary, func, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
-
 
 class Capture(Base):
     __tablename__ = "captures"
@@ -39,3 +38,5 @@ class Capture(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False,
     )
+
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="processing")
