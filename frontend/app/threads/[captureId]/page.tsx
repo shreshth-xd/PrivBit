@@ -3,15 +3,15 @@
 import { FormEvent, FocusEvent, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { ArrowUp, Pencil } from 'lucide-react';
-import { ApiError, getMessages, listCaptures, postMessage, updateCaptureTitle, type MessageResponse } from '@/lib/api';
+import { ApiError, getMessages, postMessage, updateCaptureTitle, type MessageResponse } from '@/lib/api';
+import { useCaptures } from '@/lib/captures-context';
 
 export default function ThreadPage() {
   const { captureId } = useParams<{ captureId: string }>();
+  const { captures, loading: capturesLoading, processingIds, refresh } = useCaptures();
   const [messages, setMessages] = useState<MessageResponse[]>([]);
   const [draft, setDraft] = useState('');
   const [loadedCaptureId, setLoadedCaptureId] = useState<string | null>(null);
-  const [captureTitle, setCaptureTitle] = useState<string | null>(null);
-  const [titleLoadedCaptureId, setTitleLoadedCaptureId] = useState<string | null>(null);
   const [titleDraft, setTitleDraft] = useState('');
   const [editingTitle, setEditingTitle] = useState(false);
   const [savingTitle, setSavingTitle] = useState(false);
@@ -19,37 +19,13 @@ export default function ThreadPage() {
   const [error, setError] = useState<string | null>(null);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
   const cancelTitleBlurRef = useRef(false);
-  const loading = loadedCaptureId !== captureId;
-  const displayedTitle = titleLoadedCaptureId === captureId
-    ? captureTitle || 'Untitled capture'
-    : 'Conversation';
+  const isProcessing = processingIds.has(captureId);
+  const loading = isProcessing || loadedCaptureId !== captureId;
+  const capture = captures.find((item) => item.id === captureId);
+  const displayedTitle = capturesLoading ? 'Conversation' : capture?.title || 'Untitled capture';
 
   useEffect(() => {
-    let active = true;
-
-    const loadCaptureTitle = async () => {
-      try {
-        const response = await listCaptures();
-        if (active) {
-          const capture = response.captures.find((item) => item.id === captureId);
-          setCaptureTitle(capture?.title ?? null);
-          setTitleLoadedCaptureId(captureId);
-        }
-      } catch (err) {
-        if (active) {
-          setError(err instanceof ApiError ? err.detail : 'Unable to load this conversation.');
-          setTitleLoadedCaptureId(captureId);
-        }
-      }
-    };
-
-    void loadCaptureTitle();
-    return () => {
-      active = false;
-    };
-  }, [captureId]);
-
-  useEffect(() => {
+    if (isProcessing) return;
     let active = true;
 
     const loadMessages = async () => {
@@ -72,7 +48,7 @@ export default function ThreadPage() {
     return () => {
       active = false;
     };
-  }, [captureId]);
+  }, [captureId, isProcessing]);
 
   useEffect(() => {
     endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -80,7 +56,7 @@ export default function ThreadPage() {
 
   const saveCaptureTitle = async (value: string) => {
     const nextTitle = value.trim();
-    const previousTitle = captureTitle || 'Untitled capture';
+    const previousTitle = capture?.title || 'Untitled capture';
     setEditingTitle(false);
 
     if (!nextTitle) {
@@ -93,8 +69,8 @@ export default function ThreadPage() {
     setError(null);
     try {
       const updatedCapture = await updateCaptureTitle(captureId, nextTitle);
-      setCaptureTitle(updatedCapture.title);
       setTitleDraft(updatedCapture.title || 'Untitled capture');
+      void refresh();
     } catch (err) {
       setTitleDraft(previousTitle);
       setError(err instanceof ApiError ? err.detail : 'Unable to update this title.');
@@ -172,7 +148,7 @@ export default function ThreadPage() {
               setTitleDraft(displayedTitle);
               setEditingTitle(true);
             }}
-            disabled={titleLoadedCaptureId !== captureId || savingTitle}
+            disabled={capturesLoading || savingTitle}
             aria-label={`Edit title: ${displayedTitle}`}
             className="group flex min-w-0 items-center gap-2 text-sm font-semibold text-[#1e293b] disabled:cursor-default"
           >
@@ -184,7 +160,9 @@ export default function ThreadPage() {
 
       <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-          {loading ? (
+          {isProcessing ? (
+            <p className="py-8 text-center text-sm text-[#94a3b8]">Setting up this conversation...</p>
+          ) : loading ? (
             <p className="py-8 text-center text-sm text-[#94a3b8]">Loading conversation...</p>
           ) : messages.length === 0 ? (
             <p className="py-8 text-center text-sm text-[#94a3b8]">Start the conversation with a message.</p>
