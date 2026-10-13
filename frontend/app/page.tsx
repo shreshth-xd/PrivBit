@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useEffectEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -10,8 +10,9 @@ import {
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import { useAuth } from '@/lib/auth-context';
-import { createCapture, listCaptures, type CaptureListItem } from '@/lib/api';
+import { createCapture } from '@/lib/api';
 import { ApiError } from '@/lib/auth-context';
+import { useCaptures } from '@/lib/captures-context';
 
 const formatCaptureDate = (createdAt: string) => {
   const createdDate = new Date(createdAt);
@@ -39,11 +40,9 @@ const formatCaptureDate = (createdAt: string) => {
 const QuickCaptureDesktop = () => {
   const router = useRouter();
   const { user, loading, logout } = useAuth();
+  const { captures: recentCaptures, loading: capturesLoading, error: capturesError, refresh, processingIds, trackCapture } = useCaptures();
 
   const [noteText, setNoteText] = useState('');
-  const [recentCaptures, setRecentCaptures] = useState<CaptureListItem[]>([]);
-  const [capturesLoading, setCapturesLoading] = useState(true);
-  const [capturesError, setCapturesError] = useState<string | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -62,47 +61,16 @@ const QuickCaptureDesktop = () => {
     }
   }, [loading, user, router]);
 
-  const loadRecentCaptures = async () => {
-    setCapturesLoading(true);
-    setCapturesError(null);
-    try {
-      const response = await listCaptures();
-      setRecentCaptures(response.captures);
-    } catch (err) {
-      setCapturesError(err instanceof ApiError ? err.detail : 'Unable to load recent captures.');
-    } finally {
-      setCapturesLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (user) {
-      const fetchTimer = window.setTimeout(() => void loadRecentCaptures(), 0);
-      return () => window.clearTimeout(fetchTimer);
-    }
-  }, [user]);
-
-  // Keyboard shortcut: Cmd/Ctrl + Enter to save
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-        e.preventDefault();
-        handleSave();
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [noteText]);
-
   const handleSave = async () => {
     setError(null);
     if (!noteText.trim()) return;
     setSaving(true);
     try {
-      await createCapture(noteText.trim());
-      await loadRecentCaptures();
+      const capture = await createCapture(noteText.trim());
       setNoteText('');
-      setSuccess('Saved');
+      trackCapture(capture.id);
+      void refresh();
+      setSuccess('Saved. Processing...');
       setTimeout(() => setSuccess(null), 2000);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -114,6 +82,21 @@ const QuickCaptureDesktop = () => {
       setSaving(false);
     }
   };
+
+  const saveFromKeyboardShortcut = useEffectEvent(() => {
+    void handleSave();
+  });
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+        event.preventDefault();
+        saveFromKeyboardShortcut();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   
 
@@ -135,7 +118,7 @@ const QuickCaptureDesktop = () => {
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-center p-12 max-w-5xl mx-auto">
         <header className="w-full mb-12 text-center">
-          <h2 className="text-4xl font-bold mb-4">What's on your mind?</h2>
+          <h2 className="text-4xl font-bold mb-4">What&apos;s on your mind?</h2>
           <p className="text-[#64748b]">Your thoughts are encrypted end-to-end and stored securely.</p>
         </header>
 
@@ -194,6 +177,9 @@ const QuickCaptureDesktop = () => {
                 <div key={capture.id} className="p-4 bg-white/40 border border-[#d8dadc]/50 rounded-xl hover:bg-white hover:shadow-sm transition-all">
                   <p className="text-xs font-medium text-[#1e293b] line-clamp-2 mb-2">{capture.title ?? 'Untitled capture'}</p>
                   <p className="text-[10px] text-[#94a3b8]">{formatCaptureDate(capture.created_at)}</p>
+                  {processingIds.has(capture.id) && (
+                    <p className="mt-2 text-[10px] text-[#94a3b8]">Processing...</p>
+                  )}
                 </div>
               ))}
             </div>
