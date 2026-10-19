@@ -1,4 +1,5 @@
 import os
+import logging
 
 from pathlib import Path
 
@@ -6,6 +7,7 @@ from dotenv import load_dotenv
 
 from google import genai
 from google.genai import types
+from app.core.retry import retry_call
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(BASE_DIR / ".env")
@@ -21,6 +23,7 @@ if not EMBEDDING_MODEL:
     raise RuntimeError("GEMINI_EMBEDDING_MODEL environment variable is not set")
 
 EMBEDDING_DIMENSIONS = 768  # truncated via output_dimensionality — see note below
+log = logging.getLogger(__name__)
 
 
 def generate_embedding(text: str, task_type: str = "RETRIEVAL_DOCUMENT") -> list[float]:
@@ -33,12 +36,15 @@ def generate_embedding(text: str, task_type: str = "RETRIEVAL_DOCUMENT") -> list
     query at retrieval time — this measurably improves retrieval quality
     over using the same task_type for both.
     """
-    result = _client.models.embed_content(
-        model=EMBEDDING_MODEL,
-        contents=text,
-        config=types.EmbedContentConfig(
-            task_type=task_type,
-            output_dimensionality=EMBEDDING_DIMENSIONS,
+    result = retry_call(
+        lambda: _client.models.embed_content(
+            model=EMBEDDING_MODEL,
+            contents=text,
+            config=types.EmbedContentConfig(
+                task_type=task_type,
+                output_dimensionality=EMBEDDING_DIMENSIONS,
+            ),
         ),
+        "generate_embedding",
     )
     return result.embeddings[0].values

@@ -1,5 +1,5 @@
 from uuid import UUID
-import traceback
+import logging
 
 from app.core.pool import SessionLocal
 from app.core import encryption, llm
@@ -10,6 +10,8 @@ from app.services import chunk_indexing_service
 
 import json
 from app.core.queue import redis_conn
+
+log = logging.getLogger(__name__)
 
 
 def process_new_capture(capture_id: str, user_id: str, content: str) -> None:
@@ -33,7 +35,7 @@ def process_new_capture(capture_id: str, user_id: str, content: str) -> None:
                 db.add(capture)
                 db.commit()
             except Exception:
-                traceback.print_exc()
+                log.exception("Capture title generation failed for capture %s", capture_id)
                 pass
 
             initial_msg = Message(
@@ -47,8 +49,8 @@ def process_new_capture(capture_id: str, user_id: str, content: str) -> None:
             try:
                 reply_text = llm.generate_reply([{"role": "user", "content": content}])
             except Exception:
-                traceback.print_exc()
-                reply_text = "Sorry, I couldn't generate a reply right now."
+                log.exception("Initial reply generation failed for capture %s", capture_id)
+                raise
 
             assistant_msg = Message(
                 capture_id=capture.id, user_id=user.id, role="assistant",
@@ -62,9 +64,10 @@ def process_new_capture(capture_id: str, user_id: str, content: str) -> None:
             db.add(capture)
             db.commit()
             receivers = redis_conn.publish(f"capture:{capture_id}:events", json.dumps({"status": "ready"}))
-            print(f"[JOB] published ready for {capture_id} to {receivers} subscriber(s)")
+            log.info("Published ready status for capture %s to %s subscriber(s)", capture_id, receivers)
 
         except Exception:
+            log.exception("Capture processing failed for capture %s", capture_id)
             db.rollback()
             capture.status = "failed"
             db.add(capture)
