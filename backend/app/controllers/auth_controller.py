@@ -12,6 +12,7 @@ def _issue_tokens_and_set_cookies(db: DBSession, response: Response, user_id) ->
 
     security.set_access_token_cookie(response, access_token)
     security.set_refresh_token_cookie(response, raw_refresh_token)
+    security.set_csrf_cookie(response)
 
 
 def register_controller(payload: RegisterRequest, response: Response, db: DBSession) -> dict:

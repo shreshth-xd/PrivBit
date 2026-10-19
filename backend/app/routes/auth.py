@@ -14,12 +14,16 @@ router = APIRouter()
 
 @router.get("/me", response_model=UserResponse)
 def read_current_user(
+    request: Request,
+    response: Response,
     user_id: str = Depends(security.get_current_user_id),
     db: DBSession = Depends(get_db),
 ) -> UserResponse:
     user = user_service.get_user_by_id(db, UUID(user_id))
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if security.CSRF_COOKIE_NAME not in request.cookies:
+        security.set_csrf_cookie(response)
     return UserResponse.model_validate(user)
 
 
@@ -33,7 +37,7 @@ def login(payload: LoginRequest, response: Response, db: DBSession = Depends(get
     return auth_controller.login_controller(payload, response, db)
 
 
-@router.post("/logout")
+@router.post("/logout", dependencies=[Depends(security.verify_csrf)])
 def logout(request: Request, response: Response, db: DBSession = Depends(get_db)) -> dict:
     return auth_controller.logout_controller(request, response, db)
 
@@ -52,5 +56,7 @@ def refresh_tokens(request: Request, response: Response, db: DBSession = Depends
 
     security.set_access_token_cookie(response, new_access_token)
     security.set_refresh_token_cookie(response, new_raw_refresh_token)
+    if security.CSRF_COOKIE_NAME not in request.cookies:
+        security.set_csrf_cookie(response)
 
     return {"detail": "Tokens refreshed"}

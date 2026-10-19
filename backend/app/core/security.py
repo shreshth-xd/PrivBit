@@ -38,6 +38,12 @@ ACCESS_TOKEN_COOKIE_NAME = "access_token"
 
 # --- Refresh token config ---
 REFRESH_TOKEN_COOKIE_NAME = "refresh_token"
+CSRF_COOKIE_NAME = "csrf_token"
+CSRF_HEADER_NAME = "X-CSRF-Token"
+
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").strip().lower() in {"1", "true", "yes"}
+COOKIE_DOMAIN = os.getenv("COOKIE_DOMAIN") or None
+COOKIE_PATH = "/"
 
 _refresh_ttl_env = os.getenv("REFRESH_TOKEN_TTL_DAYS")
 try:
@@ -141,6 +147,9 @@ def set_access_token_cookie(response, token: str) -> None:
         httponly=True,
         samesite="lax",
         max_age=ACCESS_TOKEN_TTL_MIN * 60,
+        secure=COOKIE_SECURE,
+        domain=COOKIE_DOMAIN,
+        path=COOKIE_PATH,
     )
 
 
@@ -151,12 +160,37 @@ def set_refresh_token_cookie(response, token: str) -> None:
         httponly=True,
         samesite="lax",
         max_age=REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60,
+        secure=COOKIE_SECURE,
+        domain=COOKIE_DOMAIN,
+        path=COOKIE_PATH,
+    )
+
+
+def set_csrf_cookie(response) -> None:
+    response.set_cookie(
+        key=CSRF_COOKIE_NAME,
+        value=secrets.token_urlsafe(32),
+        httponly=False,
+        samesite="lax",
+        max_age=REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60,
+        secure=COOKIE_SECURE,
+        domain=COOKIE_DOMAIN,
+        path=COOKIE_PATH,
     )
 
 
 def clear_auth_cookies(response) -> None:
-    response.delete_cookie(ACCESS_TOKEN_COOKIE_NAME)
-    response.delete_cookie(REFRESH_TOKEN_COOKIE_NAME)
+    for cookie_name in (ACCESS_TOKEN_COOKIE_NAME, REFRESH_TOKEN_COOKIE_NAME, CSRF_COOKIE_NAME):
+        response.delete_cookie(cookie_name, path=COOKIE_PATH, domain=COOKIE_DOMAIN)
+
+
+def verify_csrf(request: Request) -> None:
+    if request.method.upper() in {"GET", "HEAD", "OPTIONS"}:
+        return
+    cookie_token = request.cookies.get(CSRF_COOKIE_NAME)
+    header_token = request.headers.get(CSRF_HEADER_NAME)
+    if not cookie_token or not header_token or not secrets.compare_digest(cookie_token, header_token):
+        raise HTTPException(status_code=403, detail="CSRF token missing or invalid")
 
 
 def get_current_user_id(request: Request) -> str:

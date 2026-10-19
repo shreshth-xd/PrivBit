@@ -42,13 +42,22 @@ export class ApiError extends Error {
 // cross-origin) is never forgotten on an individual call site.
 
 async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
+  const method = (options.method ?? "GET").toUpperCase();
+  const headers = new Headers(options.headers);
+  if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  if (method !== "GET" && method !== "HEAD" && typeof document !== "undefined") {
+    const csrfCookie = document.cookie
+      .split(";")
+      .map((cookie) => cookie.trim())
+      .find((cookie) => cookie.startsWith("csrf_token="));
+    if (csrfCookie) {
+      headers.set("X-CSRF-Token", decodeURIComponent(csrfCookie.slice("csrf_token=".length)));
+    }
+  }
   return fetch(`${API_BASE_URL}${path}`, {
     ...options,
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    headers,
   });
 }
 

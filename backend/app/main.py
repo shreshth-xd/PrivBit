@@ -1,5 +1,8 @@
-from fastapi import FastAPI
+import os
+
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.core import security
 
 from app.routes.health import router as health_router
 from app.routes.auth import router as auth_router
@@ -12,9 +15,15 @@ app = FastAPI(
     version="0.1.0",
 )
 
+cors_origins = [
+    origin.strip()
+    for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -22,5 +31,15 @@ app.add_middleware(
 
 app.include_router(health_router, prefix="/health")
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
-app.include_router(search_router, prefix="/search", tags=["search"])
-app.include_router(captures_router, prefix="/captures", tags=["captures"])
+app.include_router(
+    search_router,
+    prefix="/search",
+    tags=["search"],
+    dependencies=[Depends(security.verify_csrf)],
+)
+app.include_router(
+    captures_router,
+    prefix="/captures",
+    tags=["captures"],
+    dependencies=[Depends(security.verify_csrf)],
+)
