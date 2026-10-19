@@ -105,27 +105,27 @@ const QuickCaptureDesktop = () => {
   // real page content.
   if (loading || !user) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#f7f9fb]">
-        <p className="text-sm text-[#64748b]">Loading...</p>
+      <div className="flex h-screen items-center justify-center bg-app-bg">
+        <p className="text-sm text-ink-soft">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-[#f7f9fb] text-[#1e293b] font-sans">
+    <div className="flex h-screen bg-app-bg text-ink font-sans">
       <Sidebar />
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-center p-12 max-w-5xl mx-auto">
         <header className="w-full mb-12 text-center">
           <h2 className="text-4xl font-bold mb-4">What&apos;s on your mind?</h2>
-          <p className="text-[#64748b]">Your thoughts are encrypted end-to-end and stored securely.</p>
+          <p className="text-ink-soft">Your thoughts are encrypted end-to-end and stored securely.</p>
         </header>
 
-        <div className="w-full max-w-3xl bg-white rounded-3xl shadow-sm border border-[#d8dadc] p-8 relative overflow-hidden group focus-within:ring-2 focus-within:ring-[#0D9488]/20 transition-all">
+        <div className="w-full max-w-3xl bg-card rounded-3xl shadow-sm border border-border p-8 relative overflow-hidden group focus-within:ring-2 focus-within:ring-primary/20 transition-all">
           <textarea
             placeholder="Start typing your thought..."
-            className="w-full h-64 resize-none outline-none text-xl leading-relaxed text-[#1e293b] placeholder:text-[#94a3b8]"
+            className="w-full h-64 resize-none outline-none text-xl leading-relaxed text-ink placeholder:text-ink-muted"
             value={noteText}
             onChange={(e) => setNoteText(e.target.value)}
           />
@@ -136,19 +136,19 @@ const QuickCaptureDesktop = () => {
         <div className="w-full max-w-3xl mt-8 flex justify-end">
           <div className="flex flex-col items-end gap-2">
             {error && (
-              <p className="text-sm text-red-600 px-1" role="alert">
+              <p className="text-sm text-danger px-1" role="alert">
                 {error}
               </p>
             )}
             {success && (
-              <p className="text-sm text-green-600 px-1" role="status">
+              <p className="text-sm text-success px-1" role="status">
                 {success}
               </p>
             )}
             <button
               onClick={handleSave}
               disabled={saving || !noteText.trim()}
-              className="flex items-center gap-2 px-8 py-3.5 bg-[#0D9488] text-white font-bold rounded-2xl hover:bg-[#0b7a70] transition-colors shadow-lg shadow-[#0D9488]/20 group disabled:opacity-60 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-8 py-3.5 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover transition-colors shadow-lg shadow-primary/20 group disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <span>{saving ? 'SAVING...' : 'Save Note'}</span>
               <Check size={18} className="group-active:scale-110 transition-transform" />
@@ -158,18 +158,18 @@ const QuickCaptureDesktop = () => {
 
         {/* Recent Captures (Small Footer Section) */}
         <div className="w-full max-w-3xl mt-24">
-          <p className="text-[10px] uppercase tracking-widest text-[#94a3b8] mb-6 text-center">Recent Captures</p>
+          <p className="text-[10px] uppercase tracking-widest text-ink-muted mb-6 text-center">Recent Captures</p>
           {capturesLoading ? (
             <div className="py-12 flex items-center justify-center">
-              <p className="text-sm text-[#94a3b8]">Loading recent captures...</p>
+              <p className="text-sm text-ink-muted">Loading recent captures...</p>
             </div>
           ) : capturesError ? (
             <div className="py-12 flex items-center justify-center">
-              <p className="text-sm text-red-500">{capturesError}</p>
+              <p className="text-sm text-danger">{capturesError}</p>
             </div>
           ) : recentCaptures.length === 0 ? (
             <div className="py-12 flex items-center justify-center">
-              <p className="text-sm text-[#94a3b8]">No recent captures found</p>
+              <p className="text-sm text-ink-muted">No recent captures found</p>
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-6">
@@ -182,11 +182,11 @@ const QuickCaptureDesktop = () => {
                       ? isCaptureStalled(capture) ? 'Processing stalled' : 'Processing...'
                       : null;
                 return (
-                  <div key={capture.id} className="p-4 bg-white/40 border border-[#d8dadc]/50 rounded-xl hover:bg-white hover:shadow-sm transition-all">
-                    <p className="text-xs font-medium text-[#1e293b] line-clamp-2 mb-2">{capture.title ?? 'Untitled capture'}</p>
-                    <p className="text-[10px] text-[#94a3b8]">{formatCaptureDate(capture.created_at)}</p>
+                  <div key={capture.id} className="p-4 bg-card/40 border border-border rounded-xl hover:bg-card hover:shadow-sm transition-all">
+                    <p className="text-xs font-medium text-ink line-clamp-2 mb-2">{capture.title ?? 'Untitled capture'}</p>
+                    <p className="text-[10px] text-ink-muted">{formatCaptureDate(capture.created_at)}</p>
                     {statusLabel && (
-                      <p className="mt-2 text-[10px] text-[#94a3b8]">{statusLabel}</p>
+                      <p className="mt-2 text-[10px] text-ink-muted">{statusLabel}</p>
                     )}
                   </div>
                 );

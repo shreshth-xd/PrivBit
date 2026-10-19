@@ -37,27 +37,27 @@ const SettingsItem: React.FC<SettingsItemProps> = ({
   onToggle,
   destructive
 }) => (
-  <div className="flex items-center justify-between p-4 bg-white hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100 last:border-0 first:rounded-t-2xl last:rounded-b-2xl">
+  <div className="flex items-center justify-between p-4 bg-card hover:bg-surface-muted transition-colors cursor-pointer border-b border-border last:border-0 first:rounded-t-2xl last:rounded-b-2xl">
     <div className="flex items-center gap-4">
-      <div className={`p-2 rounded-lg ${destructive ? 'text-red-500 bg-red-50' : 'text-slate-600 bg-slate-50'}`}>
+      <div className={`p-2 rounded-lg ${destructive ? 'text-danger bg-danger/10' : 'text-ink-soft bg-surface-muted'}`}>
         {icon}
       </div>
       <div className="flex flex-col">
-        <span className={`text-sm font-bold ${destructive ? 'text-red-500' : 'text-slate-900'}`}>{title}</span>
-        {subtitle && <span className="text-[11px] text-slate-500">{subtitle}</span>}
+        <span className={`text-sm font-bold ${destructive ? 'text-danger' : 'text-ink'}`}>{title}</span>
+        {subtitle && <span className="text-[11px] text-ink-soft">{subtitle}</span>}
       </div>
     </div>
     <div className="flex items-center">
       {action === 'toggle' && (
         <button 
           onClick={(e) => { e.stopPropagation(); onToggle?.(); }}
-          className={`w-11 h-6 rounded-full transition-colors relative ${isToggled ? 'bg-[#0D9488]' : 'bg-slate-200'}`}
+          className={`w-11 h-6 rounded-full transition-colors relative ${isToggled ? 'bg-primary' : 'bg-border'}`}
         >
-          <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${isToggled ? 'left-6' : 'left-1'}`} />
+          <div className={`absolute top-1 w-4 h-4 bg-card rounded-full transition-transform ${isToggled ? 'left-6' : 'left-1'}`} />
         </button>
       )}
-      {action === 'chevron' && <ChevronRight size={18} className="text-slate-400" />}
-      {action === 'text' && <span className="text-xs font-bold text-slate-400">{actionText}</span>}
+      {action === 'chevron' && <ChevronRight size={18} className="text-ink-muted" />}
+      {action === 'text' && <span className="text-xs font-bold text-ink-muted">{actionText}</span>}
     </div>
   </div>
 );
@@ -66,13 +66,13 @@ const SettingsMobile: React.FC = () => {
   const { user } = useAuth();
 
   return (
-    <div className="flex flex-col h-screen bg-[#f7f9fb] font-sans text-slate-900">
+    <div className="flex flex-col h-screen bg-app-bg font-sans text-ink">
       {/* Top App Bar */}
-      <header className="px-6 py-4 flex items-center justify-between bg-[#f7f9fb]/80 backdrop-blur-md sticky top-0 z-20">
+      <header className="px-6 py-4 flex items-center justify-between bg-app-bg/80 backdrop-blur-md sticky top-0 z-20">
         <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
         <div className="flex items-center gap-4">
-          <Shield size={22} className="text-slate-700" />
-          <div className="w-8 h-8 rounded-full border border-slate-200 bg-[#1e293b]/10 flex items-center justify-center text-xs font-bold text-[#1e293b] uppercase">
+          <Shield size={22} className="text-ink-soft" />
+          <div className="w-8 h-8 rounded-full border border-border bg-ink/10 flex items-center justify-center text-xs font-bold text-ink uppercase">
             {user?.email ? user.email.charAt(0) : 'U'}
           </div>
         </div>
@@ -81,17 +81,17 @@ const SettingsMobile: React.FC = () => {
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto px-5 pb-24">
         {/* Privacy First Header Card */}
-        <section className="mt-4 mb-8 bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-          <div className="w-12 h-12 bg-[#99f6e4] rounded-2xl flex items-center justify-center mb-4 text-[#0D9488]">
+        <section className="mt-4 mb-8 bg-card rounded-3xl p-6 shadow-sm border border-border">
+          <div className="w-12 h-12 bg-primary-soft rounded-2xl flex items-center justify-center mb-4 text-primary">
             <Shield size={24} />
           </div>
           <h2 className="text-xl font-bold mb-2">Privacy First</h2>
-          <p className="text-sm text-slate-500 leading-relaxed mb-6">
+          <p className="text-sm text-ink-soft leading-relaxed mb-6">
             All your data is locally encrypted using AES-256 before syncing.
           </p>
-          <div className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Encryption Key Active</span>
-            <div className="flex items-center gap-1.5 text-[#0D9488]">
+          <div className="flex items-center justify-between bg-surface-muted rounded-xl px-4 py-3">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">Encryption Key Active</span>
+            <div className="flex items-center gap-1.5 text-primary">
               <CheckCircle2 size={14} />
               <span className="text-xs font-bold">Secure</span>
             </div>
@@ -100,8 +100,8 @@ const SettingsMobile: React.FC = () => {
 
         {/* Security & Access Section */}
         <div className="mb-8">
-          <h3 className="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Security & Access</h3>
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+          <h3 className="px-4 text-[10px] font-bold uppercase tracking-widest text-ink-muted mb-3">Security & Access</h3>
+          <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
             <SettingsItem 
               icon={<Timer size={20} />} 
               title="Self-Destruct Timer" 
@@ -113,8 +113,8 @@ const SettingsMobile: React.FC = () => {
 
         {/* Workspace Section */}
         <div className="mb-8">
-          <h3 className="px-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Workspace</h3>
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+          <h3 className="px-4 text-[10px] font-bold uppercase tracking-widest text-ink-muted mb-3">Workspace</h3>
+          <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
             <SettingsItem 
               icon={<Smartphone size={20} />} 
               title="Connected Devices" 
@@ -126,8 +126,8 @@ const SettingsMobile: React.FC = () => {
 
         {/* Account Safety Section */}
         <div className="mb-8">
-          <h3 className="px-4 text-[10px] font-bold uppercase tracking-widest text-red-500 mb-3">Account Safety</h3>
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+          <h3 className="px-4 text-[10px] font-bold uppercase tracking-widest text-danger mb-3">Account Safety</h3>
+          <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
             <SettingsItem 
               icon={<Trash2 size={20} />} 
               title="Purge All Data" 
@@ -140,27 +140,27 @@ const SettingsMobile: React.FC = () => {
 
         {/* App Info */}
         <footer className="text-center pb-8 opacity-50">
-          <p className="text-xs font-medium text-slate-600">PrivBit v2.4.1 (Stable)</p>
-          <p className="text-[10px] text-slate-500 mt-1">Built with privacy by design</p>
+          <p className="text-xs font-medium text-ink-soft">PrivBit v2.4.1 (Stable)</p>
+          <p className="text-[10px] text-ink-soft mt-1">Built with privacy by design</p>
         </footer>
       </main>
 
       {/* Bottom Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 h-20 bg-white/90 backdrop-blur-lg border-t border-slate-100 flex items-center justify-around px-6 pb-safe z-30">
-        <Link href="/" className="flex flex-col items-center gap-1 text-slate-400">
+      <nav className="fixed bottom-0 left-0 right-0 h-20 bg-card/90 backdrop-blur-lg border-t border-border flex items-center justify-around px-6 pb-safe z-30">
+        <Link href="/" className="flex flex-col items-center gap-1 text-ink-muted">
           <Edit3 size={24} />
           <span className="text-[10px] font-bold">Capture</span>
         </Link>
-        <Link href="/threads" className="flex flex-col items-center gap-1 text-slate-400">
+        <Link href="/threads" className="flex flex-col items-center gap-1 text-ink-muted">
           <FolderOpen size={24} />
           <span className="text-[10px] font-bold">Threads</span>
         </Link>
-        <Link href="/search" className="flex flex-col items-center gap-1 text-slate-400">
+        <Link href="/search" className="flex flex-col items-center gap-1 text-ink-muted">
           <Search size={24} />
           <span className="text-[10px] font-bold">Search</span>
         </Link>
-        <Link href="/settings" className="flex flex-col items-center gap-1 text-[#0D9488] relative">
-          <div className="absolute -top-1 px-4 py-4 bg-[#99f6e4]/30 rounded-2xl -z-10" />
+        <Link href="/settings" className="flex flex-col items-center gap-1 text-primary relative">
+          <div className="absolute -top-1 px-4 py-4 bg-primary-soft/30 rounded-2xl -z-10" />
           <SettingsIcon size={24} />
           <span className="text-[10px] font-bold">Settings</span>
         </Link>

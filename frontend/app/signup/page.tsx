@@ -65,35 +65,35 @@ const SignupMobileRefined = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f9fb] flex flex-col font-sans text-[#1e293b]">
+    <div className="min-h-screen bg-app-bg flex flex-col font-sans text-ink">
       {/* Top Branding */}
       <header className="pt-12 pb-8 flex justify-center">
         <div className="flex items-center gap-2">
-          <span className="text-xl font-bold tracking-tight text-[#1e293b]">PrivBit</span>
+          <span className="text-xl font-bold tracking-tight text-ink">PrivBit</span>
         </div>
       </header>
 
       {/* Hero Section */}
       <main className="flex-1 px-6 pb-24">
         <div className="flex flex-col items-center text-center mb-10">
-          <div className="w-14 h-14 bg-[#99f6e4] rounded-2xl flex items-center justify-center mb-6 text-[#0D9488] shadow-sm">
+          <div className="w-14 h-14 bg-primary-soft rounded-2xl flex items-center justify-center mb-6 text-primary shadow-sm">
             <Shield size={28} />
           </div>
-          <h1 className="text-3xl font-bold mb-3 tracking-tight text-[#1e293b]">Create Sanctuary</h1>
-          <p className="text-sm text-[#64748b] leading-relaxed max-w-[280px]">
+          <h1 className="text-3xl font-bold mb-3 tracking-tight text-ink">Create Sanctuary</h1>
+          <p className="text-sm text-ink-soft leading-relaxed max-w-[280px]">
             Your digital environment, secured by design. No tracking, absolute focus.
           </p>
         </div>
 
         {/* Auth Card */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-[32px] border border-[#d8dadc] shadow-sm p-8 space-y-6">
+        <form onSubmit={handleSubmit} className="bg-card rounded-[32px] border border-border shadow-sm p-8 space-y-6">
           {/* Email Field */}
           <div className="space-y-2">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-[#64748b] px-1">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-ink-soft px-1">
               Email Address
             </label>
             <div className="relative group">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#94a3b8] group-focus-within:text-[#0D9488] transition-colors">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-muted group-focus-within:text-primary transition-colors">
                 <Mail size={18} />
               </div>
               <input
@@ -102,18 +102,18 @@ const SignupMobileRefined = () => {
                 value={email}
                 onChange={handleEmailChange}
                 required
-                className="w-full pl-12 pr-6 py-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-2xl outline-none focus:ring-2 focus:ring-[#0D9488]/10 focus:border-[#0D9488]/30 transition-all placeholder:text-[#94a3b8] text-sm"
+                className="w-full pl-12 pr-6 py-4 bg-surface-muted border border-border rounded-2xl outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/30 transition-all placeholder:text-ink-muted text-sm"
               />
             </div>
           </div>
 
           {/* Master Password Field */}
           <div className="space-y-2">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-[#64748b] px-1">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-ink-soft px-1">
               Master Password
             </label>
             <div className="relative group">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#94a3b8] group-focus-within:text-[#0D9488] transition-colors">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-muted group-focus-within:text-primary transition-colors">
                 <Lock size={18} />
               </div>
               <input
@@ -123,18 +123,18 @@ const SignupMobileRefined = () => {
                 onChange={handlePasswordChange}
                 required
                 minLength={8}
-                className="w-full pl-12 pr-12 py-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-2xl outline-none focus:ring-2 focus:ring-[#0D9488]/10 focus:border-[#0D9488]/30 transition-all placeholder:text-[#94a3b8] text-sm"
+                className="w-full pl-12 pr-12 py-4 bg-surface-muted border border-border rounded-2xl outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/30 transition-all placeholder:text-ink-muted text-sm"
               />
               <button
                 type="button"
                 onClick={togglePasswordVisibility}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94a3b8] hover:text-[#1e293b] transition-colors"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink transition-colors"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
-            <p className="text-[10px] text-[#94a3b8] px-1 leading-tight">
+            <p className="text-[10px] text-ink-muted px-1 leading-tight">
               Use at least 12 characters, numbers, and symbols.
             </p>
           </div>
@@ -142,7 +142,7 @@ const SignupMobileRefined = () => {
           {/* Acknowledgement Checkbox */}
           <div
             onClick={toggleAcceptance}
-            className="flex gap-3 p-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-2xl cursor-pointer hover:bg-white transition-colors group"
+            className="flex gap-3 p-4 bg-surface-muted border border-border rounded-2xl cursor-pointer hover:bg-card transition-colors group"
             role="button"
             tabIndex={0}
             onKeyDown={(event) => {
@@ -152,17 +152,17 @@ const SignupMobileRefined = () => {
               }
             }}
           >
-            <div className={`mt-0.5 w-5 h-5 rounded flex items-center justify-center transition-all ${isAccepted ? 'bg-[#0D9488] border-[#0D9488]' : 'bg-white border border-[#cbd5e1] group-hover:border-[#0D9488]'}`}>
+            <div className={`mt-0.5 w-5 h-5 rounded flex items-center justify-center transition-all ${isAccepted ? 'bg-primary border-primary' : 'bg-card border border-border group-hover:border-primary'}`}>
               {isAccepted && <CheckCircle2 size={14} className="text-white" />}
             </div>
-            <p className="text-xs text-[#64748b] leading-relaxed">
+            <p className="text-xs text-ink-soft leading-relaxed">
               I understand that PrivBit uses end-to-end encryption. If I lose my master password, my data cannot be recovered.
             </p>
           </div>
 
           {/* Error Message */}
           {error && (
-            <p className="text-sm text-red-600 px-1" role="alert">
+            <p className="text-sm text-danger px-1" role="alert">
               {error}
             </p>
           )}
@@ -171,7 +171,7 @@ const SignupMobileRefined = () => {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full flex items-center justify-center gap-2 px-6 py-5 bg-[#0D9488] text-white font-bold rounded-2xl hover:bg-[#0b7a70] transition-all shadow-lg shadow-[#0D9488]/20 group active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-2 px-6 py-5 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/20 group active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <span>{submitting ? 'Initializing...' : 'Initialize Vault'}</span>
             <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
@@ -180,9 +180,9 @@ const SignupMobileRefined = () => {
 
         {/* Footer Link */}
         <div className="mt-8 text-center">
-          <p className="text-sm text-[#64748b]">
+          <p className="text-sm text-ink-soft">
             Already have a sanctuary?{' '}
-            <button type="button" onClick={() => router.push('/signin')} className="font-bold text-[#0D9488] hover:underline transition-all">
+            <button type="button" onClick={() => router.push('/signin')} className="font-bold text-primary hover:underline transition-all">
               Sign in
             </button>
           </p>

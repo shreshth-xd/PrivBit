@@ -109,14 +109,14 @@ export default function Sidebar() {
     href === '/' ? pathname === '/' : pathname?.startsWith(href);
 
   return (
-    <aside className="hidden md:flex w-64 bg-[#f2f4f6] border-r border-[#d8dadc] flex-col p-6 shrink-0">
+    <aside className="hidden md:flex w-64 bg-surface-muted border-r border-border flex-col p-6 shrink-0">
       <div className="mb-10 flex items-center gap-3">
-        <div className="w-8 h-8 bg-[#1e293b] rounded flex items-center justify-center">
+        <div className="w-8 h-8 bg-ink rounded flex items-center justify-center">
           <Shield size={18} className="text-white" />
         </div>
         <div>
           <h1 className="text-lg font-bold leading-tight">PrivBit</h1>
-          <p className="text-[10px] uppercase tracking-wider text-[#64748b]">Encrypted Workspace</p>
+          <p className="text-[10px] uppercase tracking-wider text-ink-soft">Encrypted Workspace</p>
         </div>
       </div>
 
@@ -130,8 +130,8 @@ export default function Sidebar() {
               href={href}
               className={
                 active
-                  ? 'flex items-center gap-3 px-4 py-3 bg-white shadow-sm rounded-lg text-[#1e293b] font-bold transition-all border border-[#d8dadc]/50'
-                  : 'flex items-center gap-3 px-4 py-3 text-[#64748b] hover:bg-white hover:shadow-sm rounded-lg transition-all group'
+                  ? 'flex items-center gap-3 px-4 py-3 bg-card shadow-sm rounded-lg text-ink font-bold transition-all border border-border'
+                  : 'flex items-center gap-3 px-4 py-3 text-ink-soft hover:bg-card hover:shadow-sm rounded-lg transition-all group'
               }
             >
               <Icon size={20} />
@@ -150,8 +150,8 @@ export default function Sidebar() {
             aria-controls="sidebar-threads-list"
             className={
               pathname?.startsWith('/threads')
-                ? 'flex w-full items-center gap-3 rounded-lg border border-[#d8dadc]/50 bg-white px-4 py-3 text-left font-bold text-[#1e293b] shadow-sm transition-all'
-                : 'group flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-[#64748b] transition-all hover:bg-white hover:shadow-sm'
+                ? 'flex w-full items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 text-left font-bold text-ink shadow-sm transition-all'
+                : 'group flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-ink-soft transition-all hover:bg-card hover:shadow-sm'
             }
           >
             <span className={pathname?.startsWith('/threads') ? undefined : 'font-medium'}>Threads</span>
@@ -163,11 +163,11 @@ export default function Sidebar() {
           {threadsExpanded && (
             <div id="sidebar-threads-list" className="mt-1 space-y-1">
               {capturesLoading ? (
-                <p className="px-4 py-2 text-xs text-[#94a3b8]">Loading conversations...</p>
+                <p className="px-4 py-2 text-xs text-ink-muted">Loading conversations...</p>
               ) : capturesError ? (
-                <p className="px-4 py-2 text-xs text-red-600" role="alert">{capturesError}</p>
+                <p className="px-4 py-2 text-xs text-danger" role="alert">{capturesError}</p>
               ) : captures.length === 0 ? (
-                <p className="px-4 py-2 text-xs text-[#94a3b8]">No conversations yet</p>
+                <p className="px-4 py-2 text-xs text-ink-muted">No conversations yet</p>
               ) : (
                 captures.map((capture) => {
                   const active = pathname === `/threads/${capture.id}`;
@@ -182,8 +182,8 @@ export default function Sidebar() {
                     <div key={capture.id} className="group/capture relative">
                       <div className={`flex min-w-0 items-center rounded-lg pr-1 transition-colors ${
                         active
-                          ? 'bg-white font-semibold text-[#1e293b] shadow-sm'
-                          : 'text-[#64748b] hover:bg-white hover:text-[#1e293b]'
+                          ? 'bg-card font-semibold text-ink shadow-sm'
+                          : 'text-ink-soft hover:bg-card hover:text-ink'
                       }`}>
                         {editingCaptureId === capture.id ? (
                           <input
@@ -205,7 +205,7 @@ export default function Sidebar() {
                               }
                             }}
                             aria-label="Rename conversation"
-                            className="h-9 min-w-0 flex-1 rounded-md border border-[#d8dadc] bg-white px-2 text-sm outline-none focus:border-[#0D9488]"
+                            className="h-9 min-w-0 flex-1 rounded-md border border-border bg-card px-2 text-sm outline-none focus:border-primary"
                           />
                         ) : (
                           <Link
@@ -216,7 +216,7 @@ export default function Sidebar() {
                           >
                             <span>{capture.title || 'Untitled capture'}</span>
                             {statusLabel && (
-                              <span className="ml-2 text-[10px] font-normal text-[#94a3b8]">{statusLabel}</span>
+                              <span className="ml-2 text-[10px] font-normal text-ink-muted">{statusLabel}</span>
                             )}
                           </Link>
                         )}
@@ -226,18 +226,18 @@ export default function Sidebar() {
                           aria-label={`Actions for ${capture.title || 'Untitled capture'}`}
                           aria-haspopup="menu"
                           aria-expanded={openCaptureMenuId === capture.id}
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-[#64748b] opacity-60 transition hover:bg-[#f2f4f6] hover:text-[#1e293b] hover:opacity-100 focus-visible:opacity-100"
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-ink-soft opacity-60 transition hover:bg-surface-muted hover:text-ink hover:opacity-100 focus-visible:opacity-100"
                         >
                           <MoreVertical size={16} />
                         </button>
                       </div>
                       {openCaptureMenuId === capture.id && (
-                        <div role="menu" className="absolute right-1 top-9 z-20 min-w-32 rounded-md border border-[#d8dadc] bg-white p-1 shadow-lg">
+                        <div role="menu" className="absolute right-1 top-9 z-20 min-w-32 rounded-md border border-border bg-card p-1 shadow-lg">
                           <button
                             type="button"
                             role="menuitem"
                             onClick={() => beginRename(capture)}
-                            className="block w-full rounded px-3 py-2 text-left text-sm text-[#1e293b] hover:bg-[#f2f4f6]"
+                            className="block w-full rounded px-3 py-2 text-left text-sm text-ink hover:bg-surface-muted"
                           >
                             Rename
                           </button>
@@ -245,14 +245,14 @@ export default function Sidebar() {
                             type="button"
                             role="menuitem"
                             onClick={() => void handleDeleteCapture(capture)}
-                            className="block w-full rounded px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                            className="block w-full rounded px-3 py-2 text-left text-sm text-danger hover:bg-danger/10"
                           >
                             Delete
                           </button>
                         </div>
                       )}
                       {captureActionErrors[capture.id] && (
-                        <p className="px-3 py-1 text-xs text-red-600" role="alert">
+                        <p className="px-3 py-1 text-xs text-danger" role="alert">
                           {captureActionErrors[capture.id]}
                         </p>
                       )}
@@ -265,24 +265,24 @@ export default function Sidebar() {
         </div>
       </nav>
 
-      <div className="pt-6 border-t border-[#d8dadc] space-y-2">
+      <div className="pt-6 border-t border-border space-y-2">
         <a
           href="#"
-          className="flex items-center gap-3 px-4 py-2 text-xs text-[#64748b] hover:text-[#1e293b] hover:drop-shadow-[0_0_10px_rgba(15,23,42,0.12)] transition-all"
+          className="flex items-center gap-3 px-4 py-2 text-xs text-ink-soft hover:text-ink hover:drop-shadow-[0_0_10px_rgba(15,23,42,0.12)] transition-all"
         >
           <Shield size={16} />
           <span>Security</span>
         </a>
         <a
           href="#"
-          className="flex items-center gap-3 px-4 py-2 text-xs text-[#64748b] hover:text-[#1e293b] hover:drop-shadow-[0_0_10px_rgba(15,23,42,0.12)] transition-all"
+          className="flex items-center gap-3 px-4 py-2 text-xs text-ink-soft hover:text-ink hover:drop-shadow-[0_0_10px_rgba(15,23,42,0.12)] transition-all"
         >
           <HelpCircle size={16} />
           <span>Support</span>
         </a>
 
         <div className="mt-8 flex items-center gap-3 px-4 py-3">
-          <div className="w-8 h-8 rounded-full bg-[#1e293b]/10 flex items-center justify-center text-xs font-bold text-[#1e293b] uppercase">
+          <div className="w-8 h-8 rounded-full bg-ink/10 flex items-center justify-center text-xs font-bold text-ink uppercase">
             {user?.email ? user.email.charAt(0).toUpperCase() : 'U'}
           </div>
           <div className="flex-1 overflow-hidden">
@@ -290,7 +290,7 @@ export default function Sidebar() {
           </div>
           <button
             onClick={handleLogout}
-            className="text-[#64748b] hover:text-[#ef4444] transition-colors"
+            className="text-ink-soft hover:text-danger transition-colors"
             aria-label="Log out"
             type="button"
           >

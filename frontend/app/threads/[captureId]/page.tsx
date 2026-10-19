@@ -154,7 +154,7 @@ export default function ThreadPage() {
 
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <header className="flex h-16 shrink-0 items-center border-b border-[#d8dadc] bg-white/70 px-5 sm:px-8">
+      <header className="flex h-16 shrink-0 items-center border-b border-border bg-card/70 px-5 sm:px-8">
         {editingTitle ? (
           <input
             autoFocus
@@ -175,7 +175,7 @@ export default function ThreadPage() {
               }
             }}
             aria-label="Conversation title"
-            className="h-9 w-full max-w-md rounded-md border border-[#d8dadc] bg-white px-3 text-sm font-semibold text-[#1e293b] outline-none focus:border-[#0D9488]"
+            className="h-9 w-full max-w-md rounded-md border border-border bg-card px-3 text-sm font-semibold text-ink outline-none focus:border-primary"
           />
         ) : (
           <button
@@ -186,10 +186,10 @@ export default function ThreadPage() {
             }}
             disabled={capturesLoading || savingTitle}
             aria-label={`Edit title: ${displayedTitle}`}
-            className="group flex min-w-0 items-center gap-2 text-sm font-semibold text-[#1e293b] disabled:cursor-default"
+            className="group flex min-w-0 items-center gap-2 text-sm font-semibold text-ink disabled:cursor-default"
           >
             <span className="truncate">{displayedTitle}</span>
-            <Pencil size={14} className="shrink-0 text-[#94a3b8] transition-colors group-hover:text-[#0D9488]" />
+            <Pencil size={14} className="shrink-0 text-ink-muted transition-colors group-hover:text-primary" />
           </button>
         )}
       </header>
@@ -197,11 +197,11 @@ export default function ThreadPage() {
       <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
           {isProcessing ? (
-            <p className="py-8 text-center text-sm text-[#94a3b8]">Setting up this conversation...</p>
+            <p className="py-8 text-center text-sm text-ink-muted">Setting up this conversation...</p>
           ) : loading ? (
-            <p className="py-8 text-center text-sm text-[#94a3b8]">Loading conversation...</p>
+            <p className="py-8 text-center text-sm text-ink-muted">Loading conversation...</p>
           ) : messages.length === 0 ? (
-            <p className="py-8 text-center text-sm text-[#94a3b8]">Start the conversation with a message.</p>
+            <p className="py-8 text-center text-sm text-ink-muted">Start the conversation with a message.</p>
           ) : (
             messages.map((message) => {
               const isUser = message.role === 'user';
@@ -210,8 +210,8 @@ export default function ThreadPage() {
                   <div
                     className={`max-w-[85%] wrap-break-word rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[75%] ${
                       isUser
-                        ? 'rounded-br-sm bg-[#0D9488] text-white'
-                        : 'rounded-bl-sm border border-[#d8dadc] bg-white text-[#1e293b]'
+                        ? 'rounded-br-sm bg-primary text-white'
+                        : 'rounded-bl-sm border border-border bg-card text-ink'
                     }`}
                   >
                     {isUser ? <p className="whitespace-pre-wrap">{message.content}</p> : <Markdown content={message.content} />}
@@ -222,17 +222,17 @@ export default function ThreadPage() {
           )}
           {sending && !streamStarted && (
             <div className="flex justify-start" role="status" aria-label="Assistant is thinking">
-              <p className="rounded-2xl rounded-bl-sm border border-[#d8dadc] bg-white px-4 py-3 text-sm text-[#64748b]">
+              <p className="rounded-2xl rounded-bl-sm border border-border bg-card px-4 py-3 text-sm text-ink-soft">
                 Thinking...
               </p>
             </div>
           )}
-          {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
+          {error && <p className="text-sm text-danger" role="alert">{error}</p>}
           <div ref={endOfMessagesRef} />
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="border-t border-[#d8dadc] bg-white px-4 py-4 sm:px-8">
+      <form onSubmit={handleSubmit} className="border-t border-border bg-card px-4 py-4 sm:px-8">
         <div className="mx-auto flex w-full max-w-3xl items-center gap-3">
           <input
             type="text"
@@ -241,13 +241,13 @@ export default function ThreadPage() {
             disabled={loading || sending}
             placeholder="Write a message..."
             aria-label="Message"
-            className="h-12 min-w-0 flex-1 rounded-lg border border-[#d8dadc] bg-[#f7f9fb] px-4 text-sm text-[#1e293b] outline-none placeholder:text-[#94a3b8] focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/10 disabled:opacity-60"
+            className="h-12 min-w-0 flex-1 rounded-lg border border-border bg-app-bg px-4 text-sm text-ink outline-none placeholder:text-ink-muted focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-60"
           />
           <button
             type="submit"
             disabled={loading || sending || !draft.trim()}
             aria-label="Send message"
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[#0D9488] text-white transition-colors hover:bg-[#0b7a70] disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             <ArrowUp size={18} />
           </button>

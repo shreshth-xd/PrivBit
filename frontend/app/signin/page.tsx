@@ -52,21 +52,21 @@ const LoginDesktop = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f9fb] flex items-center justify-center p-6 font-sans text-[#1e293b]">
+    <div className="min-h-screen bg-app-bg flex items-center justify-center p-6 font-sans text-ink">
       {/* Auth Card */}
-      <div className="w-full max-w-[560px] bg-white rounded-[32px] border border-[#d8dadc] shadow-sm p-12 flex flex-col items-center animate-in fade-in zoom-in duration-500">
+      <div className="w-full max-w-[560px] bg-card rounded-[32px] border border-border shadow-sm p-12 flex flex-col items-center animate-in fade-in zoom-in duration-500">
         
         {/* Logo & Header */}
         <div className="flex flex-col items-center mb-10 text-center">
-          <div className="w-12 h-12 bg-white border-2 border-[#1e293b] rounded-xl flex items-center justify-center mb-6 shadow-sm">
-            <Shield size={24} className="text-[#1e293b]" />
+          <div className="w-12 h-12 bg-card border-2 border-ink rounded-xl flex items-center justify-center mb-6 shadow-sm">
+            <Shield size={24} className="text-ink" />
           </div>
           <div className="flex items-center gap-2 mb-2">
-            <Shield size={24} className="text-[#1e293b]" />
+            <Shield size={24} className="text-ink" />
             <h1 className="text-2xl font-bold tracking-tight">PrivBit</h1>
           </div>
           <h2 className="text-4xl font-bold mb-4 tracking-tight">Welcome Back</h2>
-          <p className="text-[#64748b] leading-relaxed max-w-[340px]">
+          <p className="text-ink-soft leading-relaxed max-w-[340px]">
             Enter your credentials to access your sanctuary.
           </p>
         </div>
@@ -75,7 +75,7 @@ const LoginDesktop = () => {
         <form onSubmit={handleSubmit} className="w-full space-y-6">
           {/* Email Field */}
           <div className="space-y-2">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-[#1e293b] px-1">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-ink px-1">
               Email Address
             </label>
             <div className="relative">
@@ -85,7 +85,7 @@ const LoginDesktop = () => {
                 value={email}
                 onChange={handleEmailChange}
                 required
-                className="w-full px-6 py-4 bg-[#f2f4f6] border border-transparent rounded-2xl outline-none focus:ring-2 focus:ring-[#0D9488]/10 focus:border-[#0D9488]/30 transition-all placeholder:text-[#94a3b8]"
+                className="w-full px-6 py-4 bg-surface-muted border border-transparent rounded-2xl outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/30 transition-all placeholder:text-ink-muted"
               />
             </div>
           </div>
@@ -93,10 +93,10 @@ const LoginDesktop = () => {
           {/* Password Field */}
           <div className="space-y-2">
             <div className="flex justify-between items-center px-1">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-[#1e293b]">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-ink">
                 Password
               </label>
-              <button type="button" className="text-[10px] font-bold text-[#0D9488] hover:underline uppercase tracking-wider">
+              <button type="button" className="text-[10px] font-bold text-primary hover:underline uppercase tracking-wider">
                 Forgot Password?
               </button>
             </div>
@@ -107,12 +107,12 @@ const LoginDesktop = () => {
                 value={password}
                 onChange={handlePasswordChange}
                 required
-                className="w-full px-6 py-4 bg-[#f2f4f6] border border-transparent rounded-2xl outline-none focus:ring-2 focus:ring-[#0D9488]/10 focus:border-[#0D9488]/30 transition-all placeholder:text-[#94a3b8]"
+                className="w-full px-6 py-4 bg-surface-muted border border-transparent rounded-2xl outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/30 transition-all placeholder:text-ink-muted"
               />
               <button
                 type="button"
                 onClick={togglePasswordVisibility}
-                className="absolute right-6 top-1/2 -translate-y-1/2 text-[#94a3b8] hover:text-[#1e293b] transition-colors"
+                className="absolute right-6 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink transition-colors"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -122,7 +122,7 @@ const LoginDesktop = () => {
 
           {/* Error Message */}
           {error && (
-            <p className="text-sm text-red-600 px-1" role="alert">
+            <p className="text-sm text-danger px-1" role="alert">
               {error}
             </p>
           )}
@@ -131,7 +131,7 @@ const LoginDesktop = () => {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full flex items-center justify-center gap-2 px-6 py-5 bg-[#1e293b] text-white font-bold rounded-2xl hover:bg-[#2d3a4f] transition-all shadow-lg shadow-[#1e293b]/10 group mt-4 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-2 px-6 py-5 bg-primary text-white font-bold rounded-2xl hover:bg-primary-hover transition-all shadow-lg shadow-primary/10 group mt-4 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <span>{submitting ? 'SIGNING IN...' : 'SIGN IN'}</span>
             <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
@@ -139,16 +139,16 @@ const LoginDesktop = () => {
         </form>
 
         {/* Footer Links */}
-        <div className="mt-12 pt-8 border-t border-[#f1f5f9] w-full text-center">
-          <p className="text-sm text-[#64748b]">
+        <div className="mt-12 pt-8 border-t border-border w-full text-center">
+          <p className="text-sm text-ink-soft">
             Don't have an account?{' '}
-            <button type="button" onClick={() => router.push('/signup')} className="font-bold text-[#0D9488] hover:underline">
+            <button type="button" onClick={() => router.push('/signup')} className="font-bold text-primary hover:underline">
               Create an Account
             </button>
           </p>
           <button
             type="button"
-            className="mt-6 text-[10px] font-bold text-[#94a3b8] uppercase tracking-widest hover:text-[#1e293b] transition-colors"
+            className="mt-6 text-[10px] font-bold text-ink-muted uppercase tracking-widest hover:text-ink transition-colors"
           >
             Privacy Policy
           </button>
