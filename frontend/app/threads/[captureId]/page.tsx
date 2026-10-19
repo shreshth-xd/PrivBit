@@ -3,7 +3,7 @@
 import { FormEvent, FocusEvent, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { ArrowUp, Pencil } from 'lucide-react';
-import { ApiError, getMessages, postMessage, updateCaptureTitle, type MessageResponse } from '@/lib/api';
+import { ApiError, getMessages, streamMessage, updateCaptureTitle, type MessageResponse } from '@/lib/api';
 import { useCaptures } from '@/lib/captures-context';
 
 export default function ThreadPage() {
@@ -16,6 +16,7 @@ export default function ThreadPage() {
   const [editingTitle, setEditingTitle] = useState(false);
   const [savingTitle, setSavingTitle] = useState(false);
   const [sending, setSending] = useState(false);
+  const [streamStarted, setStreamStarted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
   const cancelTitleBlurRef = useRef(false);
@@ -52,7 +53,7 @@ export default function ThreadPage() {
 
   useEffect(() => {
     endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, sending]);
+  }, [messages, sending, streamStarted]);
 
   const saveCaptureTitle = async (value: string) => {
     const nextTitle = value.trim();
@@ -103,13 +104,47 @@ export default function ThreadPage() {
     setError(null);
     setMessages((current) => [...current, optimisticMessage]);
     setSending(true);
+    setStreamStarted(false);
+    setDraft('');
+    const assistantId = `pending-assistant-${Date.now()}`;
+    let replyText = '';
 
     try {
-      const reply = await postMessage(captureId, content);
-      setMessages((current) => [...current, reply]);
-      setDraft('');
+      await streamMessage(captureId, content, {
+        onDelta: (text) => {
+          replyText += text;
+          setStreamStarted(true);
+          setMessages((current) => {
+            const existing = current.find((message) => message.id === assistantId);
+            if (existing) {
+              return current.map((message) =>
+                message.id === assistantId ? { ...message, content: replyText } : message,
+              );
+            }
+            return [...current, {
+              id: assistantId,
+              role: 'assistant',
+              content: replyText,
+              created_at: new Date().toISOString(),
+            }];
+          });
+        },
+        onDone: (messageId) => {
+          setMessages((current) => current.map((message) =>
+            message.id === assistantId ? { ...message, id: messageId } : message,
+          ));
+          setSending(false);
+        },
+        onError: (detail) => {
+          setMessages((current) => current.filter((message) => message.id !== assistantId));
+          setDraft(content);
+          setError(detail);
+          setSending(false);
+        },
+      });
     } catch (err) {
-      setMessages((current) => current.filter((message) => message.id !== optimisticId));
+      setMessages((current) => current.filter((message) => message.id !== assistantId));
+      setDraft(content);
       setError(err instanceof ApiError ? err.detail : 'Unable to send your message. Please try again.');
     } finally {
       setSending(false);
@@ -184,7 +219,7 @@ export default function ThreadPage() {
               );
             })
           )}
-          {sending && (
+          {sending && !streamStarted && (
             <div className="flex justify-start" role="status" aria-label="Assistant is thinking">
               <p className="rounded-2xl rounded-bl-sm border border-[#d8dadc] bg-white px-4 py-3 text-sm text-[#64748b]">
                 Thinking...

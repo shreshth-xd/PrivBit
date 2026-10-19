@@ -1,14 +1,24 @@
+import logging
+from collections.abc import Iterator
 from uuid import UUID
-from qdrant_client.models import PointStruct
 
 from sqlalchemy.orm import Session as DBSession
 
 from app.models.capture import Capture
 from app.models.message import Message
 from app.models.user import User
-from app.core import encryption, embedding as embedding_core, vector_store, llm
-from app.services import chunking_service
+from app.core import encryption, llm
+from app.core.job_config import JOB_FAILURE_TTL, JOB_RESULT_TTL
+from app.core.pool import SessionLocal
+from app.core.queue import job_queue
+from app.jobs.message_jobs import index_user_message
 from app.services import chunk_indexing_service
+
+log = logging.getLogger(__name__)
+
+
+class ReplyGenerationError(Exception):
+    pass
 
 
 def get_capture_or_404(db: DBSession, user: User, capture_id: UUID) -> Capture:
@@ -42,11 +52,9 @@ def _decrypt_thread_history(db: DBSession, dek: bytes, capture: Capture) -> list
     return [{"role": m.role, "content": encryption.decrypt_chunk(dek, m.encrypted_content)} for m in messages]
 
 
-def post_message(db: DBSession, user: User, capture_id: UUID, content: str) -> tuple[Message, Message]:
+def save_user_message(db: DBSession, user: User, capture_id: UUID, content: str) -> tuple[Capture, Message]:
     dek = encryption.decrypt_dek(user.encrypted_dek)
     capture = get_capture_or_404(db, user, capture_id)
-
-    # 1. Save the user's message.
     user_msg = Message(
         capture_id=capture.id,
         user_id=user.id,
@@ -58,25 +66,25 @@ def post_message(db: DBSession, user: User, capture_id: UUID, content: str) -> t
     db.add(user_msg)
     db.commit()
     db.refresh(user_msg)
-
-    # 2. Chunk + embed + index ONLY the user's message — assistant replies
-    #    are never embedded (avoids feedback-loop pollution, halves indexing
-    #    volume for free). Per-chunk failures are tracked on individual
-    #    Chunk rows (embedding_status) for future retry-worker recovery;
-    #    this message-level field is just a coarse done/not-done signal.
-    total, embedded = chunk_indexing_service.index_content(
-        db, dek, user.id, content, source_type="message", message_id=user_msg.id,
+    job_queue.enqueue(
+        index_user_message,
+        str(user_msg.id),
+        str(user.id),
+        result_ttl=JOB_RESULT_TTL,
+        failure_ttl=JOB_FAILURE_TTL,
     )
-    user_msg.embedding_status = "completed" if embedded == total else "failed"
-    db.add(user_msg)
-    db.commit()
+    return capture, user_msg
 
-    # 3. Build conversation history + generate assistant reply.
+
+def post_message(db: DBSession, user: User, capture_id: UUID, content: str) -> tuple[Message, Message]:
+    capture, user_msg = save_user_message(db, user, capture_id, content)
+    dek = encryption.decrypt_dek(user.encrypted_dek)
     history = _decrypt_thread_history(db, dek, capture)
-    reply_text = llm.generate_reply(history)
+    try:
+        reply_text = llm.generate_reply(history)
+    except llm.LLMError as error:
+        raise ReplyGenerationError from error
 
-    # 4. Save assistant reply — embedding_status stays NULL (not applicable,
-    #    assistant messages are never embedded).
     assistant_msg = Message(
         capture_id=capture.id,
         user_id=user.id,
@@ -90,6 +98,49 @@ def post_message(db: DBSession, user: User, capture_id: UUID, content: str) -> t
     db.refresh(assistant_msg)
 
     return user_msg, assistant_msg
+
+
+def stream_assistant_reply(user_id: str, capture_id: str) -> Iterator[dict]:
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == UUID(user_id)).first()
+        capture = db.query(Capture).filter(
+            Capture.id == UUID(capture_id),
+            Capture.user_id == UUID(user_id),
+        ).first()
+        if user is None or capture is None:
+            raise ValueError("Capture not found")
+        dek = encryption.decrypt_dek(user.encrypted_dek)
+        history = _decrypt_thread_history(db, dek, capture)
+        reply_parts: list[str] = []
+        for text in llm.stream_reply(history):
+            reply_parts.append(text)
+            yield {"type": "delta", "text": text}
+
+        reply = "".join(reply_parts)
+        if not reply:
+            raise llm.LLMError("stream_reply returned no text")
+        assistant_msg = Message(
+            capture_id=capture.id,
+            user_id=user.id,
+            role="assistant",
+            encrypted_content=encryption.encrypt_chunk(dek, reply),
+            message_index=_next_message_index(db, capture.id),
+            embedding_status=None,
+        )
+        db.add(assistant_msg)
+        db.commit()
+        db.refresh(assistant_msg)
+        yield {"type": "done", "message_id": str(assistant_msg.id)}
+    except Exception:
+        db.rollback()
+        log.exception("Assistant stream failed for capture %s", capture_id)
+        yield {
+            "type": "error",
+            "detail": "The AI couldn't reply right now. Please try again.",
+        }
+    finally:
+        db.close()
 
 
 def list_messages(db: DBSession, user: User, capture_id: UUID) -> list[Message]:

@@ -15,8 +15,10 @@ from app.core.pool import SessionLocal
 from app.core.queue import job_queue, redis_conn
 from app.jobs.capture_jobs import process_new_capture
 from app.jobs.chunk_jobs import retry_chunk_embedding
+from app.jobs.message_jobs import index_user_message
 from app.models.capture import Capture
 from app.models.chunk import Chunk
+from app.models.message import Message
 from app.models.user import User
 
 
@@ -29,6 +31,7 @@ def sweep() -> tuple[int, int, int]:
     chunk_count = 0
     capture_count = 0
     failed_count = 0
+    message_count = 0
     cutoff = datetime.now(timezone.utc) - timedelta(seconds=STALL_SECONDS)
     try:
         chunks = db.query(Chunk).join(User, Chunk.user_id == User.id).filter(
@@ -82,14 +85,33 @@ def sweep() -> tuple[int, int, int]:
                 json.dumps({"status": "failed"}),
             )
             failed_count += 1
+        pending_messages = db.query(Message).filter(
+            Message.role == "user",
+            Message.embedding_status == "pending",
+            Message.updated_at < cutoff,
+            ~db.query(Chunk.id).filter(Chunk.message_id == Message.id).exists(),
+        ).order_by(Message.updated_at).limit(50).all()
+        for message in pending_messages:
+            message.updated_at = datetime.now(timezone.utc)
+            db.add(message)
+            db.commit()
+            job_queue.enqueue(
+                index_user_message,
+                str(message.id),
+                str(message.user_id),
+                result_ttl=JOB_RESULT_TTL,
+                failure_ttl=JOB_FAILURE_TTL,
+            )
+            message_count += 1
     finally:
         db.close()
-    if chunk_count or capture_count or failed_count:
+    if chunk_count or capture_count or failed_count or message_count:
         log.info(
-            "Retry sweep found chunks=%d captures=%d exhausted_captures=%d",
+            "Retry sweep found chunks=%d captures=%d exhausted_captures=%d messages=%d",
             chunk_count,
             capture_count,
             failed_count,
+            message_count,
         )
     return chunk_count, capture_count, failed_count
 

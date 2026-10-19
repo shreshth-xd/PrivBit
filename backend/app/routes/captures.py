@@ -52,6 +52,26 @@ def post_message(
     return message_controller.post_message_controller(capture_id, payload, user_id, db)
 
 
+@router.post("/{capture_id}/messages/stream")
+def stream_message(
+    capture_id: UUID,
+    payload: MessageCreate,
+    user_id: str = Depends(security.get_current_user_id),
+    db: DBSession = Depends(get_db),
+):
+    events = message_controller.stream_message_controller(capture_id, payload, user_id, db)
+
+    def event_stream():
+        for event in events:
+            yield f"data: {json.dumps(event)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @router.get("/{capture_id}/messages", response_model=MessageListResponse)
 def list_messages(
     capture_id: UUID,

@@ -170,6 +170,12 @@ export interface SearchResponse {
   sources_count: number;
 }
 
+export interface StreamMessageHandlers {
+  onDelta: (text: string) => void;
+  onDone: (messageId: string) => void;
+  onError: (detail: string) => void;
+}
+
 export async function createCapture(content: string): Promise<CaptureResponse> {
   const response = await authedFetch("/captures/", {
     method: "POST",
@@ -248,6 +254,67 @@ export async function postMessage(captureId: string, content: string): Promise<M
     body: JSON.stringify({ content }),
   });
   return parseOrThrow<MessageResponse>(response);
+}
+
+export async function streamMessage(
+  captureId: string,
+  content: string,
+  handlers: StreamMessageHandlers,
+  signal?: AbortSignal,
+): Promise<void> {
+  const response = await authedFetch(`/captures/${encodeURIComponent(captureId)}/messages/stream`, {
+    method: "POST",
+    body: JSON.stringify({ content }),
+    signal,
+  });
+  if (!response.ok) {
+    await parseOrThrow<void>(response);
+    return;
+  }
+  if (!response.body) {
+    throw new ApiError(response.status, "The response stream is unavailable.");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let terminalEventReceived = false;
+
+  const dispatchFrame = (frame: string) => {
+    for (const line of frame.split(/\r?\n/)) {
+      if (!line.startsWith("data: ")) continue;
+      const event = JSON.parse(line.slice(6)) as
+        | { type: "delta"; text: string }
+        | { type: "done"; message_id: string }
+        | { type: "error"; detail: string };
+      if (event.type === "delta") handlers.onDelta(event.text);
+      if (event.type === "done") {
+        terminalEventReceived = true;
+        handlers.onDone(event.message_id);
+      }
+      if (event.type === "error") {
+        terminalEventReceived = true;
+        handlers.onError(event.detail);
+      }
+    }
+  };
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      buffer += decoder.decode(value, { stream: !done });
+      const frames = buffer.split(/\r?\n\r?\n/);
+      buffer = frames.pop() ?? "";
+      for (const frame of frames) dispatchFrame(frame);
+      if (done) break;
+    }
+    if (buffer.trim()) dispatchFrame(buffer);
+    if (!terminalEventReceived) {
+      throw new ApiError(response.status, "The response ended before the reply completed.");
+    }
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 export async function search(query: string): Promise<SearchResponse> {
