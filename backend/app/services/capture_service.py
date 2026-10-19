@@ -15,6 +15,7 @@ from qdrant_client.models import PointIdsList
 
 from app.core.queue import job_queue
 from app.jobs.capture_jobs import process_new_capture
+from app.core.job_config import JOB_FAILURE_TTL, JOB_RESULT_TTL
 
 
 
@@ -32,7 +33,13 @@ def create_capture(db: DBSession, user: User, content: str) -> Capture:
     # Chunking, embedding, title generation, and the initial AI reply all
     # happen in the background now — this function only does the one fast
     # DB write above, then hands the rest off to a worker process via Redis.
-    job_queue.enqueue(process_new_capture, str(capture.id), str(user.id), content)
+    job_queue.enqueue(
+        process_new_capture,
+        str(capture.id),
+        str(user.id),
+        result_ttl=JOB_RESULT_TTL,
+        failure_ttl=JOB_FAILURE_TTL,
+    )
 
     return capture
 

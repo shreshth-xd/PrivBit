@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, LargeBinary, func, String
+from sqlalchemy import DateTime, ForeignKey, Integer, LargeBinary, func, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -40,3 +40,4 @@ class Capture(Base):
     )
 
     status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="processing")
+    processing_attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
