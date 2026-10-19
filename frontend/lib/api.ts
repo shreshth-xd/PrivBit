@@ -177,6 +177,7 @@ export interface MessageListResponse {
 export interface SearchResponse {
   answer: string;
   sources_count: number;
+  sources: { capture_id: string; title: string | null }[];
 }
 
 export interface StreamMessageHandlers {

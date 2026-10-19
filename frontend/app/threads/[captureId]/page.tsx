@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { ArrowUp, Pencil } from 'lucide-react';
 import { ApiError, getMessages, streamMessage, updateCaptureTitle, type MessageResponse } from '@/lib/api';
 import { useCaptures } from '@/lib/captures-context';
+import Markdown from '@/components/Markdown';
 
 export default function ThreadPage() {
   const { captureId } = useParams<{ captureId: string }>();
@@ -206,15 +207,15 @@ export default function ThreadPage() {
               const isUser = message.role === 'user';
               return (
                 <div key={message.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-                  <p
-                    className={`max-w-[85%] whitespace-pre-wrap wrap-break-word rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[75%] ${
+                  <div
+                    className={`max-w-[85%] wrap-break-word rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[75%] ${
                       isUser
                         ? 'rounded-br-sm bg-[#0D9488] text-white'
                         : 'rounded-bl-sm border border-[#d8dadc] bg-white text-[#1e293b]'
                     }`}
                   >
-                    {message.content}
-                  </p>
+                    {isUser ? <p className="whitespace-pre-wrap">{message.content}</p> : <Markdown content={message.content} />}
+                  </div>
                 </div>
               );
             })

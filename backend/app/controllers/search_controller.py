@@ -10,5 +10,5 @@ def search_controller(payload: SearchRequest, user_id: str, db: DBSession) -> Se
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    answer, chunks = retrieval_service.search_and_answer(db, user, payload.query)
-    return SearchResponse(answer=answer, sources_count=len(chunks))
+    answer, sources = retrieval_service.search_and_answer(db, user, payload.query)
+    return SearchResponse(answer=answer, sources_count=len(sources), sources=sources)

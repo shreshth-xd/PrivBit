@@ -1,167 +1,113 @@
-"use client"
-import React, { useState } from 'react';
+'use client';
+
+import { FormEvent, useState } from 'react';
 import Link from 'next/link';
+import { Search as SearchIcon } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
-import { useAuth } from '@/lib/auth-context';
-import { 
-  PlusCircle, 
-  BookOpen, 
-  Search as SearchIcon, 
-  Shield,
-  RefreshCw,
-  Command,
-  ArrowRight
-} from 'lucide-react';
-import { search } from '@/lib/api';
-import { ApiError } from '@/lib/auth-context';
+import Markdown from '@/components/Markdown';
+import { ApiError, search, type SearchResponse } from '@/lib/api';
 
-interface SearchResult {
-  id: string;
-  title: string;
-  excerpt: string;
-  date: string;
-  tags: string[];
-  matchPercentage?: number;
-}
-
-const SearchDesktop: React.FC = () => {
+export default function SearchPage() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState<boolean>(false);
-  const [answer, setAnswer] = useState<string | null>(null);
-  const [sourcesCount, setSourcesCount] = useState<number | null>(null);
+  const [result, setResult] = useState<SearchResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  // Mock results based on the design
-  const results: SearchResult[] = [
-    {
-      id: '1',
-      title: 'Strategic roadmap for 2024 scaling',
-      excerpt: 'The focus for the next two quarters will be on decentralizing the storage nodes while...',
-      date: '2 hours ago • Project Alpha',
-      tags: ['roadmap', 'security'],
-      matchPercentage: 98
-    },
-    {
-      id: '2',
-      title: 'Key Rotation Script (V2)',
-      excerpt: 'Updated the Python script to handle batch rotation of keys in the staging environment...',
-      date: 'Mar 12 • Development',
-      tags: [],
-      matchPercentage: 82
-    }
-  ];
 
-  const { user } = useAuth();
-
-  const handleSearch = async () => {
+  const handleSearch = async (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
+    const query = searchQuery.trim();
+    if (!query || loading) return;
+    setHasSearched(true);
     setError(null);
-    setAnswer(null);
-    setSourcesCount(null);
-    if (!searchQuery.trim()) return;
+    setResult(null);
     setLoading(true);
     try {
-      const res = await search(searchQuery.trim());
-      setAnswer(res.answer);
-      setSourcesCount(res.sources_count);
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.detail);
-      } else {
-        setError('Something went wrong. Please try again.');
-      }
+      setResult(await search(query));
+    } catch (reason) {
+      setError(reason instanceof ApiError ? reason.detail : 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex h-screen bg-[#f7f9fb] text-[#1e293b] font-sans">
+    <div className="flex h-screen bg-[#f7f9fb] text-[#1e293b]">
       <Sidebar />
-
-      {/* Main Search Interface */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Header */}
-        <header className="h-16 border-b border-[#d8dadc] flex items-center justify-between px-8 bg-white/50 backdrop-blur-sm shrink-0">
-          <span className="text-[10px] uppercase tracking-widest text-[#94a3b8] font-bold">Semantic Search Engine</span>
-          <div className="flex items-center gap-4">
-            <button className="p-2 text-[#64748b] hover:text-[#1e293b] transition-colors">
-              <RefreshCw size={18} />
-            </button>
-            <button className="p-2 text-[#64748b] hover:text-[#1e293b] transition-colors">
-              <Shield size={18} />
-            </button>
-            <div className="w-8 h-8 rounded-full bg-[#1e293b]/10 flex items-center justify-center text-xs font-bold text-[#1e293b] uppercase">
-              {user?.email ? user.email.charAt(0) : 'U'}
-            </div>
-          </div>
+      <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="flex h-16 shrink-0 items-center border-b border-[#d8dadc] bg-white/70 px-6 sm:px-8">
+          <span className="text-sm font-semibold">Search</span>
         </header>
 
-        {/* Search Bar Area */}
-        <section className="px-12 py-10 max-w-5xl mx-auto w-full flex-1 flex flex-col">
-          <div className="relative group mb-12">
-            <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none text-[#94a3b8] group-focus-within:text-[#0D9488] transition-colors">
-              <SearchIcon size={22} />
-            </div>
-            <input 
-              type="text" 
-              placeholder="Search across your encrypted universe..."
-              className="w-full pl-16 pr-24 py-6 bg-white border border-[#d8dadc] rounded-2xl shadow-sm text-xl outline-none focus:ring-4 focus:ring-[#0D9488]/5 focus:border-[#0D9488] transition-all placeholder:text-[#94a3b8]"
+        <section className="mx-auto flex w-full max-w-5xl flex-1 flex-col overflow-y-auto px-5 py-8 sm:px-10 sm:py-10">
+          <form onSubmit={handleSearch} className="relative mb-8">
+            <SearchIcon className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-[#64748b]" size={20} />
+            <input
+              type="text"
+              placeholder="Search your captures"
+              aria-label="Search your captures"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  void handleSearch();
-                }
-              }}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              className="h-14 w-full rounded-xl border border-[#8a9bb0] bg-white pl-14 pr-28 text-base text-[#1e293b] outline-none placeholder:text-[#5b6b80] focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
             />
-            <div className="absolute inset-y-0 right-6 flex items-center">
-              <button
-                onClick={() => void handleSearch()}
-                disabled={loading || !searchQuery.trim()}
-                className="px-4 py-2 bg-[#0D9488] text-white rounded-2xl font-bold disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Searching...' : 'Search'}
-              </button>
-            </div>
-          </div>
+            <button
+              type="submit"
+              disabled={loading || !searchQuery.trim()}
+              className="absolute right-2 top-2 h-10 rounded-lg bg-[#0D9488] px-4 text-sm font-semibold text-white hover:bg-[#0b7a70] disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              Search
+            </button>
+          </form>
 
-          {searchQuery === '' ? (
-            /* Empty State */
-            <div className="flex-1 flex flex-col items-center justify-center text-center opacity-80 animate-in fade-in duration-700">
-              <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center shadow-sm border border-[#d8dadc] mb-6 text-[#0D9488]">
-                 <SearchIcon size={32} />
+          {error && <p className="mb-5 text-sm text-red-700" role="alert">{error}</p>}
+
+          {loading ? (
+            <div className="space-y-4" role="status" aria-label="Searching captures">
+              <div className="h-4 w-32 animate-pulse rounded bg-[#dde5ee]" />
+              <div className="space-y-3 rounded-lg border border-[#b6c3d1] bg-white p-6">
+                <div className="h-4 w-full animate-pulse rounded bg-[#dde5ee]" />
+                <div className="h-4 w-11/12 animate-pulse rounded bg-[#dde5ee]" />
+                <div className="h-4 w-3/4 animate-pulse rounded bg-[#dde5ee]" />
               </div>
-              <h2 className="text-3xl font-bold text-[#1e293b] mb-4">Deep Knowledge, Instantly Found</h2>
-              <p className="text-[#64748b] max-w-md leading-relaxed">
-                Ask natural questions like "What did I learn about zero-knowledge proofs last month?" or "Find my notes on the Tokyo trip."
-              </p>
             </div>
-          ) : (
-            <div>
-              {error && (
-                <p className="text-sm text-red-600 px-1" role="alert">{error}</p>
-              )}
+          ) : result ? (
+            <div className="space-y-5">
+              <section className="rounded-lg border border-[#b6c3d1] bg-white p-5 shadow-sm sm:p-7" aria-label="Search answer">
+                <h1 className="mb-4 text-sm font-semibold uppercase text-[#475569]">Answer</h1>
+                <div className="text-sm text-[#1e293b]">
+                  <Markdown content={result.answer} />
+                </div>
+              </section>
 
-              {answer ? (
-                <div className="bg-white border border-[#d8dadc] rounded-2xl p-6 mt-6">
-                  <h3 className="text-sm font-bold text-[#64748b] uppercase tracking-wider mb-2">Answer</h3>
-                  <p className="text-[#475569] leading-relaxed mb-4">{answer}</p>
-                  {sourcesCount !== null && (
-                    <p className="text-xs text-[#94a3b8]">{sourcesCount} sources</p>
-                  )}
-                </div>
+              {result.sources.length > 0 ? (
+                <section aria-label="Search sources">
+                  <p className="mb-3 text-sm font-medium text-[#475569]">Based on {result.sources_count} captures</p>
+                  <div className="flex flex-wrap gap-2">
+                    {result.sources.map((source) => (
+                      <Link
+                        key={source.capture_id}
+                        href={`/threads/${source.capture_id}`}
+                        className="max-w-full truncate rounded-md border border-[#b6c3d1] bg-white px-3 py-2 text-sm text-[#0f172a] hover:border-[#0f766e] hover:text-[#0f766e]"
+                      >
+                        {source.title || 'Untitled capture'}
+                      </Link>
+                    ))}
+                  </div>
+                </section>
               ) : (
-                <div className="py-12 flex items-center justify-center">
-                  <p className="text-sm text-[#94a3b8]">Type a query and press Enter or click Search to run semantic search.</p>
-                </div>
+                <p className="text-sm text-[#475569]">No relevant captures found.</p>
               )}
             </div>
-          )}
+          ) : !hasSearched ? (
+            <div className="flex flex-1 flex-col items-center justify-center py-16 text-center">
+              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-xl border border-[#b6c3d1] bg-white text-[#0f766e]">
+                <SearchIcon size={24} />
+              </div>
+              <h1 className="text-xl font-semibold text-[#0f172a]">Ready to search</h1>
+            </div>
+          ) : null}
         </section>
       </main>
     </div>
   );
-};
-
-export default SearchDesktop;
+}
