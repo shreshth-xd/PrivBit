@@ -29,7 +29,12 @@ def update_title_controller(capture_id, payload: CaptureTitleUpdate, user_id: st
         capture = capture_service.update_title(db, user, capture_id, payload.title)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Capture not found")
-    return CaptureListItem(id=capture.id, title=payload.title, created_at=capture.created_at)
+    return CaptureListItem(
+        id=capture.id,
+        title=payload.title,
+        created_at=capture.created_at,
+        status=capture.status,
+    )
 
 
 def list_captures_controller(user_id: str, db: DBSession) -> CaptureListResponse:
@@ -43,7 +48,7 @@ def list_captures_controller(user_id: str, db: DBSession) -> CaptureListResponse
     items = []
     for c in captures:
         title = encryption.decrypt_chunk(dek, c.encrypted_title) if c.encrypted_title else None
-        items.append(CaptureListItem(id=c.id, title=title, created_at=c.created_at))
+        items.append(CaptureListItem(id=c.id, title=title, created_at=c.created_at, status=c.status))
 
     return CaptureListResponse(captures=items)
 

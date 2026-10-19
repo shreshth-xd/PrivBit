@@ -6,7 +6,7 @@ import { type FocusEvent, useRef, useState } from 'react';
 import { ChevronDown, HelpCircle, LogOut, MoreVertical, PlusCircle, Search, Settings, Shield } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError, deleteCapture, updateCaptureTitle, type CaptureListItem } from '@/lib/api';
-import { useCaptures } from '@/lib/captures-context';
+import { isCaptureStalled, useCaptures } from '@/lib/captures-context';
 
 const navItems = [
   { href: '/', label: 'Quick Capture', icon: PlusCircle },
@@ -171,6 +171,13 @@ export default function Sidebar() {
               ) : (
                 captures.map((capture) => {
                   const active = pathname === `/threads/${capture.id}`;
+                  const statusLabel = capture.status === 'failed'
+                    ? 'Failed to process'
+                    : processingIds.has(capture.id)
+                      ? 'Processing...'
+                      : capture.status === 'processing'
+                        ? isCaptureStalled(capture) ? 'Processing stalled' : 'Processing...'
+                        : null;
                   return (
                     <div key={capture.id} className="group/capture relative">
                       <div className={`flex min-w-0 items-center rounded-lg pr-1 transition-colors ${
@@ -208,8 +215,8 @@ export default function Sidebar() {
                             className="min-w-0 flex-1 truncate py-2 pl-11 pr-2 text-sm"
                           >
                             <span>{capture.title || 'Untitled capture'}</span>
-                            {processingIds.has(capture.id) && (
-                              <span className="ml-2 text-[10px] font-normal text-[#94a3b8]">Processing...</span>
+                            {statusLabel && (
+                              <span className="ml-2 text-[10px] font-normal text-[#94a3b8]">{statusLabel}</span>
                             )}
                           </Link>
                         )}

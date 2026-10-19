@@ -1,7 +1,14 @@
 import os
 
+from pathlib import Path
+
+from dotenv import load_dotenv
+
 from google import genai
 from google.genai import types
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+load_dotenv(BASE_DIR / ".env")
 
 _GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not _GEMINI_API_KEY:

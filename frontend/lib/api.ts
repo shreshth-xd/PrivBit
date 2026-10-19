@@ -147,6 +147,7 @@ export interface CaptureListItem {
   id: string;
   title: string | null;
   created_at: string;
+  status: "processing" | "ready" | "failed";
 }
 
 export interface CaptureListResponse {

@@ -12,7 +12,7 @@ import Sidebar from '@/components/Sidebar';
 import { useAuth } from '@/lib/auth-context';
 import { createCapture } from '@/lib/api';
 import { ApiError } from '@/lib/auth-context';
-import { useCaptures } from '@/lib/captures-context';
+import { isCaptureStalled, useCaptures } from '@/lib/captures-context';
 
 const formatCaptureDate = (createdAt: string) => {
   const createdDate = new Date(createdAt);
@@ -173,15 +173,24 @@ const QuickCaptureDesktop = () => {
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-6">
-              {recentCaptures.map((capture) => (
-                <div key={capture.id} className="p-4 bg-white/40 border border-[#d8dadc]/50 rounded-xl hover:bg-white hover:shadow-sm transition-all">
-                  <p className="text-xs font-medium text-[#1e293b] line-clamp-2 mb-2">{capture.title ?? 'Untitled capture'}</p>
-                  <p className="text-[10px] text-[#94a3b8]">{formatCaptureDate(capture.created_at)}</p>
-                  {processingIds.has(capture.id) && (
-                    <p className="mt-2 text-[10px] text-[#94a3b8]">Processing...</p>
-                  )}
-                </div>
-              ))}
+              {recentCaptures.map((capture) => {
+                const statusLabel = capture.status === 'failed'
+                  ? 'Failed to process'
+                  : processingIds.has(capture.id)
+                    ? 'Processing...'
+                    : capture.status === 'processing'
+                      ? isCaptureStalled(capture) ? 'Processing stalled' : 'Processing...'
+                      : null;
+                return (
+                  <div key={capture.id} className="p-4 bg-white/40 border border-[#d8dadc]/50 rounded-xl hover:bg-white hover:shadow-sm transition-all">
+                    <p className="text-xs font-medium text-[#1e293b] line-clamp-2 mb-2">{capture.title ?? 'Untitled capture'}</p>
+                    <p className="text-[10px] text-[#94a3b8]">{formatCaptureDate(capture.created_at)}</p>
+                    {statusLabel && (
+                      <p className="mt-2 text-[10px] text-[#94a3b8]">{statusLabel}</p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

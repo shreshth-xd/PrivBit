@@ -1,4 +1,5 @@
 from uuid import UUID
+import traceback
 
 from app.core.pool import SessionLocal
 from app.core import encryption, llm
@@ -32,6 +33,7 @@ def process_new_capture(capture_id: str, user_id: str, content: str) -> None:
                 db.add(capture)
                 db.commit()
             except Exception:
+                traceback.print_exc()
                 pass
 
             initial_msg = Message(
@@ -45,6 +47,7 @@ def process_new_capture(capture_id: str, user_id: str, content: str) -> None:
             try:
                 reply_text = llm.generate_reply([{"role": "user", "content": content}])
             except Exception:
+                traceback.print_exc()
                 reply_text = "Sorry, I couldn't generate a reply right now."
 
             assistant_msg = Message(

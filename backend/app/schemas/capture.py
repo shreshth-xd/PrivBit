@@ -14,6 +14,7 @@ class CaptureListItem(BaseModel):
     id: UUID
     title: str | None
     created_at: datetime
+    status: str
 
 class CaptureListResponse(BaseModel):
     captures: list[CaptureListItem]

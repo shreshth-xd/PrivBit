@@ -1,6 +1,13 @@
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
 from google.genai import types
 from app.core.embedding import _client
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+load_dotenv(BASE_DIR / ".env")
 
 ANSWER_MODEL = os.getenv("GEMINI_ANSWER_MODEL")
 if not ANSWER_MODEL:

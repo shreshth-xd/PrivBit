@@ -27,6 +27,12 @@ interface CapturesContextValue {
 }
 
 const CapturesContext = createContext<CapturesContextValue | undefined>(undefined);
+const CAPTURE_STALLED_AFTER_MS = 15 * 60 * 1000;
+
+export function isCaptureStalled(capture: CaptureListItem): boolean {
+  const age = Date.now() - new Date(capture.created_at).getTime();
+  return !Number.isFinite(age) || age < 0 || age > CAPTURE_STALLED_AFTER_MS;
+}
 
 export function CapturesProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
@@ -34,6 +40,8 @@ export function CapturesProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingIds, setProcessingIds] = useState<Set<string>>(() => new Set());
+  const processingIdsRef = useRef(processingIds);
+  processingIdsRef.current = processingIds;
   const subscriptions = useRef(new Map<string, () => void>());
 
   const refresh = useCallback(async () => {
@@ -91,6 +99,18 @@ export function CapturesProvider({ children }: { children: ReactNode }) {
     });
     subscriptions.current.set(id, unsubscribe);
   }, [refresh, user]);
+
+  useEffect(() => {
+    for (const capture of captures) {
+      if (
+        capture.status === "processing" &&
+        !processingIdsRef.current.has(capture.id) &&
+        !isCaptureStalled(capture)
+      ) {
+        trackCapture(capture.id);
+      }
+    }
+  }, [captures, trackCapture]);
 
   return (
     <CapturesContext.Provider value={{ captures, loading, error, refresh, processingIds, trackCapture }}>
