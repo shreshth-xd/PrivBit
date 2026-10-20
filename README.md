@@ -2,24 +2,22 @@
 
 A privacy-first, RAG-based personal knowledge base. Capture your thoughts,
 have them semantically indexed, and converse with an AI grounded in your own
-private context — with encryption and embedding deliberately kept as
-separate concerns throughout the architecture.
+context. Content is encrypted at rest in PostgreSQL; semantic embeddings are
+stored separately in Qdrant and are not encrypted.
 
 ## Core design principles
 
-- **Privacy by architecture, not by promise.** Content is encrypted at rest
-  under a per-user envelope-encryption scheme (KEK/DEK), and the vector
-  store holding semantic embeddings is kept isolated from the encrypted
-  content store — no single compromised system exposes both what you wrote
-  and its searchable meaning.
+- **Privacy by architecture, with explicit limits.** Content is encrypted at
+  rest under a per-user envelope-encryption scheme (KEK/DEK). The vector store
+  is separate from PostgreSQL, but embeddings are not encrypted and can leak
+  information about their source text.
 - **Separation of concerns end-to-end.** Encrypted content and its vector
   representation are never colocated in the same store; auth, business
   logic, and route handling are layered (routes → controllers → services);
   chunking, embedding, and encryption are independent, composable steps.
-- **Deliberate, documented trade-offs.** Where scalability or security
-  competes with simplicity (Qdrant over pgvector, synchronous ingestion as
-  an interim step before a background job queue), the trade-off is made
-  explicitly and revisited as the project matures — not left implicit.
+- **Deliberate, documented trade-offs.** Redis/RQ handles background jobs;
+  operational gaps and data-protection limits are listed below rather than
+  implied away.
 
 ## Features
 
@@ -36,33 +34,54 @@ separate concerns throughout the architecture.
 - **Secure, rotating auth** — JWT access tokens paired with opaque,
   rotating refresh tokens with reuse detection (token replay revokes all
   sessions for that user).
+- **Background capture processing** — capture creation returns promptly;
+  the RQ worker performs chunking, embeddings, titling, and the initial reply.
+- **Processing updates** — capture state is published over Redis Pub/Sub and
+  delivered through Server-Sent Events (SSE); a retry worker reschedules
+  stale work and purges expired sessions hourly.
+- **Streamed thread replies** — assistant text arrives as SSE deltas and is
+  saved after successful generation.
+- **Source-aware search** — semantic results include the matching capture
+  titles and IDs.
+- **CSRF protection** — mutating capture/search routes and logout use a
+  double-submit cookie/header check.
 
 ## Architecture
 
 ```
-┌─────────────┐      ┌──────────────┐      ┌─────────────┐
-│   Next.js    │ ───▶ │   FastAPI    │ ───▶ │  PostgreSQL  │
-│  (frontend)  │      │  (backend)   │      │ (encrypted   │
-└─────────────┘      └──────┬───────┘      │  content,    │
-                             │              │  auth, users)│
-                             ▼              └─────────────┘
-                      ┌──────────────┐
-                      │    Qdrant     │
-                      │ (vector store,│
-                      │  no plaintext)│
-                      └──────────────┘
+Next.js frontend
+  | cookie-authenticated HTTP / SSE
+  v
+FastAPI API --------------------------> PostgreSQL
+  |                                      ^
+  | enqueue IDs                          | load/decrypt/index
+  v                                      |
+Redis (RQ queue + Pub/Sub) <---------- RQ worker
+  ^                                      |  \
+  | retry sweeper                        |   +--> Gemini
+  |                                      +------> Qdrant
+  +---------------- retry worker                 (vectors)
+
+Capture completion: worker commits status -> publishes Redis event ->
+API SSE endpoint delivers it to EventSource clients (with a DB status
+check on connect). Thread replies stream Gemini deltas through the API
+and are saved to PostgreSQL on success.
 ```
 
-**Ingestion:** capture → chunked (token-based, overlap, sentence-boundary
-aware) → each chunk encrypted (AES-GCM, per-user DEK) and stored in
-Postgres → each chunk's *plaintext* embedded (Gemini) and upserted to
-Qdrant as `{chunk_id, vector, user_id}` — Qdrant never stores plaintext or
-encrypted content, only vectors and IDs.
+**Ingestion:** `POST /captures/` encrypts and stores the capture in
+PostgreSQL, then enqueues a job containing only its IDs in Redis/RQ. The RQ
+worker decrypts the content, chunks it, stores encrypted chunks, sends
+plaintext to Gemini for embeddings, and upserts `{chunk_id, vector,
+user_id}` to Qdrant. Qdrant stores vectors and IDs, not source text. The
+API creates the `privbit` collection on first startup if absent (768
+dimensions, cosine distance, keyword `user_id` payload index).
 
-**Retrieval:** query embedded → Qdrant semantic search (filtered by
-`user_id`) returns matching `chunk_id`s → those chunks fetched from
-Postgres and decrypted → assembled as context → fed to the LLM for a
-grounded answer.
+**Retrieval:** query embedded → Qdrant semantic search filtered by
+`user_id` → matching chunks fetched from PostgreSQL in relevance order and
+decrypted → answer generated by Gemini with unique capture sources returned
+to the client. Capture completion status uses Redis Pub/Sub and SSE;
+thread reply generation streams deltas to the client and persists a
+successful reply.
 
 ## Tech stack
 
@@ -71,8 +90,9 @@ grounded answer.
 
 **Frontend:** Next.js (App Router), React, TypeScript, Tailwind CSS
 
-**Data stores:** PostgreSQL (users, sessions, captures, messages, chunks —
-all encrypted content), Qdrant (vector embeddings only)
+**Data stores and jobs:** PostgreSQL (users, sessions, captures, messages,
+encrypted chunks), Redis/RQ (job queue, locks, and Pub/Sub events), Qdrant
+(vectors and ID payloads only)
 
 **AI/ML:** Gemini (`gemini-embedding-001` for embeddings, Gemini Flash for
 answer generation and titling) — model names are environment-configurable,
@@ -84,7 +104,8 @@ not hardcoded
 - Python 3.12+
 - Node.js (required to run Next.js/npm — the frontend's underlying JS runtime, not a separately-chosen backend technology)
 - PostgreSQL
-- A running Qdrant instance (e.g. via Docker)
+- Redis
+- Qdrant
 - A Gemini API key
 
 ### Backend setup
@@ -96,38 +117,33 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-(If `requirements.txt` doesn't exist yet in your checkout, generate it from
-your working environment with `pip freeze > requirements.txt` and commit
-it — it should include at minimum: `fastapi`, `uvicorn`, `sqlalchemy`,
-`alembic`, `psycopg`, `pydantic`, `python-dotenv`, `PyJWT`, `passlib`,
-`bcrypt==4.0.1` (pinned — newer versions break `passlib`'s version
-detection), `cryptography`, `tiktoken`, `nltk`, `google-genai`,
-`qdrant-client`.)
+Copy `backend/.env.example` to `backend/.env` and set its values. The
+backend variables are `DATABASE_URL`, `REDIS_URL`, `QDRANT_URL`,
+`ACCESS_TOKEN_SIG`, `ACCESS_TOKEN_TTL`, `REFRESH_TOKEN_TTL_DAYS`,
+`ENCRYPTION_KEK`, `GEMINI_API_KEY`, `GEMINI_EMBEDDING_MODEL`,
+`GEMINI_ANSWER_MODEL`, `COOKIE_SECURE`, `COOKIE_DOMAIN`, and
+`CORS_ORIGINS`. Do not commit real credentials.
 
-Create `backend/.env`:
-
-```env
-DATABASE_URL=postgresql+psycopg://username:password@localhost:5432/privbit
-
-ACCESS_TOKEN_SIG=<generate with: python -c "import secrets; print(secrets.token_urlsafe(64))">
-ACCESS_TOKEN_TTL=15
-REFRESH_TOKEN_TTL_DAYS=7
-
-ENCRYPTION_KEK=<generate with: python -c "import secrets, base64; print(base64.b64encode(secrets.token_bytes(32)).decode())">
-
-GEMINI_API_KEY=<your Gemini API key>
-GEMINI_EMBEDDING_MODEL=gemini-embedding-001
-GEMINI_ANSWER_MODEL=<your chosen Gemini Flash model>
-
-QDRANT_URL=http://localhost:6333
-```
-
-Run migrations and start the server:
+Run migrations and start all three backend processes in separate terminals,
+from `backend/` with the virtual environment active:
 
 ```bash
 alembic upgrade head
 fastapi dev app/main.py
 ```
+
+```bash
+python -m app.worker
+```
+
+```bash
+python -m app.retry_worker
+```
+
+The API creates the Qdrant collection automatically on first startup if it
+does not exist: collection `privbit`, 768 dimensions, cosine distance, and
+a keyword payload index on `user_id`. Restart both workers after changing
+job code; they run as separate processes.
 
 ### Frontend setup
 
@@ -136,7 +152,8 @@ cd frontend
 npm install
 ```
 
-Create `frontend/.env.local`:
+Copy `frontend/.env.example` to `frontend/.env.local` and set
+`NEXT_PUBLIC_API_URL`:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000
@@ -145,6 +162,12 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 ```bash
 npm run dev
 ```
+
+### Production notes
+
+Serve the API behind HTTPS and set `COOKIE_SECURE=true`. Set `CORS_ORIGINS`
+to the exact frontend origin(s). Set `COOKIE_DOMAIN` when the frontend and
+API use different subdomains and need to share cookies.
 
 ## API overview
 
@@ -155,27 +178,34 @@ npm run dev
 | `POST /auth/refresh` | Rotates refresh token, issues new access token |
 | `GET /auth/me` | Current authenticated user |
 | `POST /auth/logout` | Revokes session, clears cookies |
-| `POST /captures/` | Create a capture — chunks, encrypts, embeds, titles, and generates an initial reply |
-| `GET /captures/` | List a user's captures |
+| `GET /health/` | Health check |
+| `POST /captures/` | Create encrypted capture and enqueue processing; returns `{id, created_at, status}` |
+| `GET /captures/` | List a user's captures, including processing status |
 | `PATCH /captures/{id}` | Rename a capture |
 | `DELETE /captures/{id}` | Delete a capture and its chunks/messages, including Qdrant cleanup |
-| `POST /captures/{id}/messages` | Post a follow-up message in a capture's thread |
+| `POST /captures/{id}/messages` | Post a follow-up message and return a complete reply |
+| `POST /captures/{id}/messages/stream` | Post a follow-up message and stream assistant reply events |
 | `GET /captures/{id}/messages` | Retrieve a capture's full message history |
-| `POST /search/` | Semantic search + LLM-generated grounded answer across a user's captures |
+| `GET /captures/{id}/events` | Stream capture `ready`/`failed` status events |
+| `POST /search/` | Semantic search and grounded answer, including source captures |
 
-All endpoints except `/auth/register` and `/auth/login` require a valid
-access token, delivered via HTTP-only cookie.
+Authenticated routes use the HTTP-only `access_token` cookie. For CSRF,
+`POST /auth/logout` and mutating `/captures` and `/search` routes require
+the readable `csrf_token` cookie value in the `X-CSRF-Token` header. Register,
+login, and refresh are exempt. Capture creation returns immediately; status
+updates arrive over SSE. The thread stream uses SSE `delta`, `done`, and
+`error` events.
 
 ## Known trade-offs & roadmap
 
-- **Ingestion is currently synchronous** — chunking, embedding, title
-  generation, and initial-reply generation all happen inline within the
-  request/response cycle. A background job queue is planned to decouple
-  this, once needed.
-- **Failed chunk embeddings** are tracked per-chunk (`embedding_status`)
-  but not yet automatically retried — a retry worker is a natural extension
-  of the eventual job queue.
-- **No streaming AI output yet** — replies are returned whole; token-level
-  streaming is a planned UX improvement.
-- **No CSRF protection yet** — deferred during initial auth buildout,
-  flagged for the production security hardening pass.
+- **Static pages:** `/[project]` is mock project content and `/settings` is
+  placeholder UI; neither is a data-backed workflow.
+- **No automated tests** are currently included.
+- **No Docker packaging** is currently included.
+- **Embeddings are not encrypted.** They are derived from plaintext and can
+  leak information about the source text even though Qdrant does not store
+  that text.
+- **Capture status after a reload:** the capture list reloads status and the
+  frontend reconnects to events for processing captures created within the
+  last 15 minutes. Older processing captures are shown as stalled and are
+  not resubscribed. Closing the tab does not stop the server-side job.
