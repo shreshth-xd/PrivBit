@@ -7,8 +7,6 @@ stored separately in Qdrant and are not encrypted.
 
 <div align="center">
 
-<br/>
-
 ## Tech Stack
 
 ![Next.js](https://img.shields.io/badge/Next.js-App_Router-000000?style=for-the-badge&logo=next.js&logoColor=white)
