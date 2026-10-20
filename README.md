@@ -1,9 +1,49 @@
 # PrivBit
 
+
+<div align="center">
+
 A privacy-first, RAG-based personal knowledge base. Capture your thoughts,
 have them semantically indexed, and converse with an AI grounded in your own
 context. Content is encrypted at rest in PostgreSQL; semantic embeddings are
 stored separately in Qdrant and are not encrypted.
+
+
+<br/>
+
+
+## Tech Stack
+
+### Backend
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-D71F00?style=for-the-badge&logo=sqlalchemy&logoColor=white)
+![Alembic](https://img.shields.io/badge/Alembic-Migrations-6BA539?style=for-the-badge)
+![Pydantic](https://img.shields.io/badge/Pydantic-E92063?style=for-the-badge&logo=pydantic&logoColor=white)
+![Cryptography](https://img.shields.io/badge/Cryptography-AES--GCM-6D28D9?style=for-the-badge)
+![tiktoken](https://img.shields.io/badge/tiktoken-Tokenization-412991?style=for-the-badge)
+![NLTK](https://img.shields.io/badge/NLTK-NLP-154F3C?style=for-the-badge)
+![Docker](https://img.shields.io/badge/Docker-Containerized_DB-2496ED?style=for-the-badge\&logo=docker\&logoColor=white)
+
+### Frontend
+![Next.js](https://img.shields.io/badge/Next.js-App_Router-000000?style=for-the-badge&logo=next.js&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
+
+### Data Stores & Job Processing
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)
+![Qdrant](https://img.shields.io/badge/Qdrant-DC244C?style=for-the-badge)
+
+### AI / ML
+![Google Gemini](https://img.shields.io/badge/Google_Gemini-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white)
+![RAG](https://img.shields.io/badge/RAG-Retrieval_Augmented_Generation-2563EB?style=for-the-badge)
+![Vector Search](https://img.shields.io/badge/Vector_Search-Embedding_Based_Retrieval-0F766E?style=for-the-badge)
+
+
+
+</div>
 
 ## Core design principles
 
