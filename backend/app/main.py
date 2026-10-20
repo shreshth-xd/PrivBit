@@ -1,18 +1,37 @@
+import asyncio
+import logging
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core import security
+from app.core.vector_store import ensure_collection
 
 from app.routes.health import router as health_router
 from app.routes.auth import router as auth_router
 from app.routes.captures import router as captures_router
 from app.routes.search import router as search_router
 
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    try:
+        await asyncio.to_thread(ensure_collection)
+    except Exception:
+        logger.exception(
+            "Qdrant collection check failed; captures cannot be indexed until Qdrant is reachable"
+        )
+    yield
+
+
 app = FastAPI(
     title="PrivBit API",
     description="Privacy-first personal knowledge base API",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 cors_origins = [
