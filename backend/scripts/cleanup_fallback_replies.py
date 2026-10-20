@@ -67,7 +67,6 @@ def main() -> None:
             db.rollback()
         print(f"Last apology messages: {last_message_count}")
         print(f"Non-last apology messages (untouched): {non_last_message_count}")
-        print(f"Mode: {'apply' if args.apply else 'dry-run'}")
     except Exception:
         db.rollback()
         log.exception("Fallback reply cleanup failed")
