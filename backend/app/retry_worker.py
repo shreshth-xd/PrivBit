@@ -2,6 +2,7 @@ import json
 import logging
 import signal
 import threading
+import time
 from datetime import datetime, timedelta, timezone
 
 from app.core.job_config import (
@@ -20,10 +21,13 @@ from app.models.capture import Capture
 from app.models.chunk import Chunk
 from app.models.message import Message
 from app.models.user import User
+from app.services.session_service import purge_expired_sessions
 
 
 log = logging.getLogger(__name__)
 stop_event = threading.Event()
+SESSION_PURGE_INTERVAL_SECONDS = 60 * 60
+_last_session_purge_at: float | None = None
 
 
 def sweep() -> tuple[int, int, int]:
@@ -120,6 +124,29 @@ def _request_stop(signum, frame) -> None:
     stop_event.set()
 
 
+def _purge_expired_sessions_if_due() -> None:
+    global _last_session_purge_at
+
+    now = time.monotonic()
+    if (
+        _last_session_purge_at is not None
+        and now - _last_session_purge_at < SESSION_PURGE_INTERVAL_SECONDS
+    ):
+        return
+
+    _last_session_purge_at = now
+    try:
+        db = SessionLocal()
+        try:
+            deleted = purge_expired_sessions(db)
+            if deleted > 0:
+                log.info("Purged %d expired sessions", deleted)
+        finally:
+            db.close()
+    except Exception:
+        log.exception("Expired session purge failed")
+
+
 def main() -> None:
     signal.signal(signal.SIGINT, _request_stop)
     signal.signal(signal.SIGTERM, _request_stop)
@@ -128,6 +155,7 @@ def main() -> None:
             sweep()
         except Exception:
             log.exception("Retry sweep failed")
+        _purge_expired_sessions_if_due()
         stop_event.wait(SWEEP_INTERVAL_SECONDS)
 
 
