@@ -1,4 +1,4 @@
-Last updated: 2026-10-20 | Last verified against commit: f3fea11
+Last updated: 2026-11-07 | Last verified against commit: 82e8297
 
 # PrivBit project state
 
@@ -11,11 +11,19 @@ PrivBit is a personal capture, thread, and semantic question-answering applicati
 - Backend: FastAPI, Pydantic v2, SQLAlchemy 2.x, Alembic.
 - Services: PostgreSQL, Redis/RQ, Qdrant, Google Gemini APIs.
 - Run three backend processes from `backend/`: `fastapi dev app/main.py` (API), `python -m app.worker` (RQ queue `privbit`), and `python -m app.retry_worker` (retry sweeper and session purge). Redis, PostgreSQL, Qdrant, and Gemini access must also be available. Workers are independent processes and must be restarted after job-code changes.
-- API startup calls `ensure_collection()`. On first start against an empty Qdrant, it creates `privbit` with 768-dimensional cosine vectors and a keyword `user_id` payload index. A failed Qdrant check is logged; the API still starts, but indexing cannot work until Qdrant is reachable.
+- API startup calls `ensure_collection()` once. On first start against an empty Qdrant, it creates `privbit` with 768-dimensional cosine vectors and a keyword `user_id` payload index. The call does not retry, so Docker Compose starts the API only after Qdrant's healthcheck passes.
+
+### Docker stack
+
+The root `docker-compose.yml` runs `postgres:18`, `redis:8`, `qdrant/qdrant:v1.18.2`, a backend image built from `python:3.12-slim`, and a frontend image built from `node:22-slim`. Services are `postgres`, `redis`, `qdrant`, one-shot `migrate`, `api`, `worker`, `retry-worker`, and `frontend`. The named volumes are `postgres-data`, `redis-data`, and `qdrant-data`.
+
+Run `scripts/init-env.sh` once to copy `.env.example` to `.env` and generate the database password, access-token signature, and encryption KEK. The Gemini API key and model names are then supplied in `.env`. The API is published on `127.0.0.1:${BACKEND_PORT:-8000}` and the frontend on `127.0.0.1:${FRONTEND_PORT:-3000}`; database and queue ports are not published to the host.
+
+PostgreSQL, Redis, Qdrant, and the API have healthchecks. `migrate` waits for healthy PostgreSQL and must complete successfully before the API and both workers start. The API also waits for healthy Redis and Qdrant; the frontend waits for a healthy API. The backend image runs as non-root `appuser`, the frontend image as non-root `nextjs`, and secrets are injected at runtime rather than copied into images.
 
 ## 2. Configuration names
 
-Backend variables: `DATABASE_URL`, `REDIS_URL`, `QDRANT_URL`, `ACCESS_TOKEN_SIG`, `ACCESS_TOKEN_TTL`, `REFRESH_TOKEN_TTL_DAYS`, `ENCRYPTION_KEK`, `GEMINI_API_KEY`, `GEMINI_EMBEDDING_MODEL`, `GEMINI_ANSWER_MODEL`, `COOKIE_SECURE`, `COOKIE_DOMAIN`, and `CORS_ORIGINS`. `QDRANT_URL` defaults to localhost; access-token TTL defaults to 10 minutes and refresh-token lifetime to 7 days. The frontend uses `NEXT_PUBLIC_API_URL`. Examples are in `backend/.env.example` and `frontend/.env.example`; backend modules load `backend/.env` and the frontend uses its local environment file.
+Backend variables: `DATABASE_URL`, `REDIS_URL`, `QDRANT_URL`, `ACCESS_TOKEN_SIG`, `ACCESS_TOKEN_TTL`, `REFRESH_TOKEN_TTL_DAYS`, `ENCRYPTION_KEK`, `GEMINI_API_KEY`, `GEMINI_EMBEDDING_MODEL`, `GEMINI_ANSWER_MODEL`, `COOKIE_SECURE`, `COOKIE_DOMAIN`, and `CORS_ORIGINS`. `QDRANT_URL` defaults to localhost; access-token TTL defaults to 10 minutes and refresh-token lifetime to 7 days. The frontend uses `NEXT_PUBLIC_API_URL`. Local development examples are in `backend/.env.example` and `frontend/.env.example`; Docker uses the root `.env.example` and `scripts/init-env.sh`.
 
 Route inventory: `GET /health/`; `POST /auth/register`, `/auth/login`, `/auth/logout`, `/auth/refresh`; `GET /auth/me`; `POST /captures/`, `GET /captures/`, `PATCH /captures/{id}`, `DELETE /captures/{id}`; `POST /captures/{id}/messages`, `POST /captures/{id}/messages/stream`, `GET /captures/{id}/messages`, `GET /captures/{id}/events`; `POST /search/`.
 
@@ -66,7 +74,7 @@ Routes include `POST /captures/{id}/messages`, `POST /captures/{id}/messages/str
 
 Implemented: cookie/session auth and CSRF; encrypted PostgreSQL content; asynchronous capture ingestion; retry sweeper and hourly session purge; capture-status SSE; streamed assistant replies; source-aware semantic search; frontend shared capture state and processing/failed/stalled states.
 
-Known gaps: `/[project]` and `/settings` remain static/placeholder pages; there are no automated tests or Docker packaging; embeddings are not encrypted; processing events are not resumed after reload for captures older than the frontend's 15-minute tracking window (status is still displayed, and server work continues).
+Known gaps: `/[project]` and `/settings` remain static/placeholder pages; embeddings are not encrypted; processing events are not resumed after reload for captures older than the frontend's 15-minute tracking window (status is still displayed, and server work continues).
 
 ## 10. Key decisions and why
 
