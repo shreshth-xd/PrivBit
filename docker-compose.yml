@@ -1,0 +1,138 @@
+name: privbit
+
+x-backend-env: &backend-env
+  DATABASE_URL: "postgresql+psycopg://privbit:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/privbit"
+  REDIS_URL: redis://redis:6379
+  QDRANT_URL: http://qdrant:6333
+  ACCESS_TOKEN_SIG: "${ACCESS_TOKEN_SIG:?ACCESS_TOKEN_SIG is required}"
+  ACCESS_TOKEN_TTL: "${ACCESS_TOKEN_TTL:?ACCESS_TOKEN_TTL is required}"
+  REFRESH_TOKEN_TTL_DAYS: "${REFRESH_TOKEN_TTL_DAYS:?REFRESH_TOKEN_TTL_DAYS is required}"
+  ENCRYPTION_KEK: "${ENCRYPTION_KEK:?ENCRYPTION_KEK is required}"
+  GEMINI_API_KEY: "${GEMINI_API_KEY:?GEMINI_API_KEY is required}"
+  GEMINI_EMBEDDING_MODEL: "${GEMINI_EMBEDDING_MODEL:?GEMINI_EMBEDDING_MODEL is required}"
+  GEMINI_ANSWER_MODEL: "${GEMINI_ANSWER_MODEL:?GEMINI_ANSWER_MODEL is required}"
+  COOKIE_SECURE: "${COOKIE_SECURE:-false}"
+  COOKIE_DOMAIN: "${COOKIE_DOMAIN:-}"
+  CORS_ORIGINS: "http://localhost:${FRONTEND_PORT:-3000}"
+
+x-backend: &backend
+  image: privbit-backend
+  build:
+    context: .
+    dockerfile: backend/Dockerfile
+  environment: *backend-env
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: privbit
+      POSTGRES_DB: privbit
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U privbit -d privbit"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:8
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  qdrant:
+    image: qdrant/qdrant:v1.18.2
+    volumes:
+      - qdrant-data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/6333'"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  migrate:
+    <<: *backend
+    command: ["alembic", "upgrade", "head"]
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  worker:
+    <<: *backend
+    command: ["python", "-m", "app.worker"]
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  retry-worker:
+    <<: *backend
+    command: ["python", "-m", "app.retry_worker"]
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  frontend:
+    image: privbit-frontend
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: "http://localhost:${BACKEND_PORT:-8000}"
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
+
+volumes:
+  postgres-data:
+  redis-data:
+  qdrant-data:
