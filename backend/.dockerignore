@@ -1,0 +1,10 @@
+.venv
+__pycache__
+*.pyc
+.env
+.env.*
+cookies.txt
+.git
+tests
+alembic/__pycache__
+alembic/.cache

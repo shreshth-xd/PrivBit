@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+backend/.venv
+backend/__pycache__
+backend/*.pyc
+backend/tests
+backend/alembic/__pycache__
+frontend/node_modules
+frontend/.next
+frontend/.env*
+**/cookies.txt
+**/*cookiejar*
+**/*cookies*.txt
