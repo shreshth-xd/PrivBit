@@ -194,6 +194,37 @@ Serve the API behind HTTPS and set `COOKIE_SECURE=true`. Set `CORS_ORIGINS`
 to the exact frontend origin(s). Set `COOKIE_DOMAIN` when the frontend and
 API use different subdomains and need to share cookies.
 
+## Run with Docker
+
+Prerequisite: Docker with the Compose v2 plugin.
+
+```bash
+git clone <repository-url>
+cd PrivBit
+./scripts/init-env.sh
+```
+
+Edit `.env` to add your Gemini API key, then start the stack:
+
+```bash
+docker compose up --build
+```
+
+Open the frontend at http://localhost:3000 and the API documentation at
+http://localhost:8000/docs. Stop the stack with `docker compose down`; wipe
+the database, queue, and vector data with `docker compose down -v`.
+
+Back up `.env`, especially `ENCRYPTION_KEK`. Losing or changing that key makes
+stored data permanently unreadable. `BACKEND_PORT` and `FRONTEND_PORT` change
+the host ports. `NEXT_PUBLIC_API_URL` is baked into the frontend at build time,
+so changing ports or hosts requires rebuilding the frontend image.
+
+Cookies for `localhost` are shared across ports. Clear them or log out when
+switching between this Docker stack and a local development setup. For an
+HTTPS deployment, set `COOKIE_SECURE=true` and configure `CORS_ORIGINS` to the
+exact frontend origin(s). The frontend Docker build downloads the Google fonts
+used by `next/font/google`, so the build requires network access.
+
 ## API overview
 
 | Endpoint | Description |
@@ -226,7 +257,6 @@ updates arrive over SSE. The thread stream uses SSE `delta`, `done`, and
 - **Static pages:** `/[project]` is mock project content and `/settings` is
   placeholder UI; neither is a data-backed workflow.
 - **No automated tests** are currently included.
-- **No Docker packaging** is currently included.
 - **Embeddings are not encrypted.** They are derived from plaintext and can
   leak information about the source text even though Qdrant does not store
   that text.

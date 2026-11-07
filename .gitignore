@@ -1,0 +1,7 @@
+.env
+!.env.example
+backend/.env
+backend/cookies.txt
+**/cookies.txt
+**/*cookiejar*
+**/*cookies*.txt
